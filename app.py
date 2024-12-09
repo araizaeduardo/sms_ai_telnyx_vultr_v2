@@ -346,6 +346,26 @@ def kanban():
         logging.error(f"Error recuperando datos: {str(e)}")
         return "Error recuperando datos", 500
 
+@app.route("/last_update")
+def last_update():
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        # Obtener la fecha de la última actualización
+        cursor.execute("""
+            SELECT MAX(fecha_contacto)
+            FROM clientes
+        """)
+        
+        last_update = cursor.fetchone()[0] or ''
+        conn.close()
+        
+        return jsonify({"last_update": last_update})
+    except Exception as e:
+        logging.error(f"Error checking last update: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     setup_logging()
     validate_config()

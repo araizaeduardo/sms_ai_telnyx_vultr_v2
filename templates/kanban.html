@@ -75,6 +75,30 @@
             }
         }
     </style>
+    <script>
+        const REFRESH_INTERVAL = 30000; // 30 segundos
+        let lastUpdate = null;
+        
+        async function checkForUpdates() {
+            try {
+                const response = await fetch('/last_update');
+                const data = await response.json();
+                
+                // Solo actualizar si hay cambios nuevos
+                if (lastUpdate === null || data.last_update > lastUpdate) {
+                    window.location.reload();
+                }
+                lastUpdate = data.last_update;
+            } catch (error) {
+                console.error('Error checking updates:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Iniciar verificación periódica
+            setInterval(checkForUpdates, REFRESH_INTERVAL);
+        });
+    </script>
 </head>
 <body>
     <div class="container-fluid">
