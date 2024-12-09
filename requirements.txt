@@ -1,0 +1,4 @@
+flask
+telnyx
+python-dotenv
+openai

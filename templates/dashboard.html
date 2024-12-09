@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Mensajes</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f4f7fc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+            padding: 30px;
+            margin-top: 40px;
+        }
+        h1 {
+            color: #2c3e50;
+            font-weight: 600;
+            margin-bottom: 30px;
+        }
+        .table {
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.02);
+        }
+        .table thead th {
+            background-color: #4a6fa5;
+            color: #ffffff;
+            font-weight: 500;
+            border: none;
+            padding: 15px;
+            font-size: 0.95rem;
+        }
+        .table tbody td {
+            padding: 12px 15px;
+            vertical-align: middle;
+            border-color: #f0f3f7;
+            color: #4a5568;
+        }
+        .table tbody tr:hover {
+            background-color: #f8fafd;
+            transform: scale(1.001);
+            transition: all 0.2s ease;
+        }
+        .table tbody tr {
+            border-left: 4px solid transparent;
+        }
+        .table tbody tr:hover {
+            border-left: 4px solid #4a6fa5;
+        }
+        /* Estilo para estados */
+        .estado-pendiente {
+            background-color: #fff3cd;
+            color: #856404;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+        }
+        .estado-completado {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center">Panel de Mensajes</h1>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Teléfono</th>
+                        <th>Mensaje</th>
+                        <th>Respuesta</th>
+                        <th>Fecha de Contacto</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cliente in clientes %}
+                    <tr>
+                        <td>#{{ cliente[0] }}</td>
+                        <td><strong>{{ cliente[1] }}</strong></td>
+                        <td>{{ cliente[2] }}</td>
+                        <td>{{ cliente[3] }}</td>
+                        <td>{{ cliente[4] }}</td>
+                        <td>{{ cliente[5] }}</td>
+                        <td>
+                            {% if cliente[6] == 'Pendiente' %}
+                                <span class="estado-pendiente">{{ cliente[6] }}</span>
+                            {% else %}
+                                <span class="estado-completado">{{ cliente[6] }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
