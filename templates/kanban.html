@@ -36,6 +36,7 @@
         .completado .column-header { background: #d1e7dd; }
         
         .task-card {
+            position: relative;
             background: white;
             padding: 1rem;
             margin-bottom: 0.5rem;
@@ -63,6 +64,17 @@
             font-size: 0.9em;
         }
 
+        .task-actions {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+        }
+        
+        .btn-detail {
+            font-size: 0.8em;
+            padding: 0.2rem 0.5rem;
+        }
+
         @media (max-width: 768px) {
             .kanban-board {
                 flex-direction: column;
@@ -75,30 +87,6 @@
             }
         }
     </style>
-    <script>
-        const REFRESH_INTERVAL = 30000; // 30 segundos
-        let lastUpdate = null;
-        
-        async function checkForUpdates() {
-            try {
-                const response = await fetch('/last_update');
-                const data = await response.json();
-                
-                // Solo actualizar si hay cambios nuevos
-                if (lastUpdate === null || data.last_update > lastUpdate) {
-                    window.location.reload();
-                }
-                lastUpdate = data.last_update;
-            } catch (error) {
-                console.error('Error checking updates:', error);
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            // Iniciar verificación periódica
-            setInterval(checkForUpdates, REFRESH_INTERVAL);
-        });
-    </script>
 </head>
 <body>
     <div class="container-fluid">
@@ -110,6 +98,9 @@
                     <div class="task-phone">📱 {{ cliente[2] }}</div>
                     <div class="task-message">{{ cliente[3]|truncate(100) }}</div>
                     <div class="task-date">{{ cliente[5] }}</div>
+                    <div class="task-actions">
+                        <button class="btn btn-sm btn-outline-primary btn-detail" onclick="verDetalle('{{ cliente[0] }}')">Ver detalle</button>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
@@ -121,6 +112,9 @@
                     <div class="task-phone">📱 {{ cliente[2] }}</div>
                     <div class="task-message">{{ cliente[3]|truncate(100) }}</div>
                     <div class="task-date">{{ cliente[5] }}</div>
+                    <div class="task-actions">
+                        <button class="btn btn-sm btn-outline-primary btn-detail" onclick="verDetalle('{{ cliente[0] }}')">Ver detalle</button>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
@@ -132,6 +126,9 @@
                     <div class="task-phone">📱 {{ cliente[2] }}</div>
                     <div class="task-message">{{ cliente[3]|truncate(100) }}</div>
                     <div class="task-date">{{ cliente[5] }}</div>
+                    <div class="task-actions">
+                        <button class="btn btn-sm btn-outline-primary btn-detail" onclick="verDetalle('{{ cliente[0] }}')">Ver detalle</button>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
@@ -143,6 +140,9 @@
                     <div class="task-phone">📱 {{ cliente[2] }}</div>
                     <div class="task-message">{{ cliente[3]|truncate(100) }}</div>
                     <div class="task-date">{{ cliente[5] }}</div>
+                    <div class="task-actions">
+                        <button class="btn btn-sm btn-outline-primary btn-detail" onclick="verDetalle('{{ cliente[0] }}')">Ver detalle</button>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
@@ -219,6 +219,18 @@
 
         // Initialize task counters
         updateColumnCounts();
+
+        function verDetalle(taskId) {
+            // Detener el evento de drag al hacer clic en el botón
+            event.stopPropagation();
+            
+            // Aquí puedes implementar la lógica para mostrar el detalle
+            // Por ejemplo, redirigir a una página de detalle
+            window.location.href = `/detalle/${taskId}`;
+            
+            // O abrir en una nueva pestaña
+            // window.open(`/detalle/${taskId}`, '_blank');
+        }
     </script>
 </body>
 </html>

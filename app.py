@@ -366,6 +366,32 @@ def last_update():
         logging.error(f"Error checking last update: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/detalle/<int:mensaje_id>')
+def detalle(mensaje_id):
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        # Obtener todos los campos de la tabla clientes
+        cursor.execute("""
+            SELECT id, nombre, telefono, mensaje, respuesta, 
+                   fecha_contacto, estado
+            FROM clientes 
+            WHERE id = ?
+        """, (mensaje_id,))
+        
+        cliente = cursor.fetchone()
+        conn.close()
+        
+        if cliente is None:
+            return "Cliente no encontrado", 404
+            
+        return render_template('detalle.html', cliente=cliente)
+        
+    except Exception as e:
+        logging.error(f"Error al obtener detalles del cliente: {str(e)}")
+        return "Error al obtener detalles", 500
+
 if __name__ == "__main__":
     setup_logging()
     validate_config()
