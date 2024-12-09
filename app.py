@@ -21,6 +21,8 @@ telnyx.api_key = os.getenv('TELNYX_API_KEY')
 
 # Otras configuraciones desde variables de entorno
 DB_NAME = os.getenv('DB_NAME', 'crm_pipeline.db')
+WEBSITE_URL = os.getenv('WEBSITE_URL', 'https://paseotravelclientes.resvoyage.com')
+PHONE_NUMBER = os.getenv('PHONE_NUMBER', '818-244-2184')
 
 # Agregar configuración de base de datos y funciones relacionadas
 
@@ -120,7 +122,7 @@ def generar_respuesta_ia(mensaje):
         
         # Verificar si el mensaje menciona vuelos
         if "vuelos" in mensaje.lower():
-            return "Para más información sobre vuelos, visita nuestra página web: https://paseotravelclientes.resvoyage.com\nPor favor llámanos al 818-244-2184 para más información."
+            return f"Te redirecciono a nuestro sistema de reservas donde podrás consultar precios y disponibilidad: {WEBSITE_URL}\nPor favor llámanos al {PHONE_NUMBER} para asistencia personalizada."
         
         # Inicializar cliente de Vultr
         client = VultrInferenceClient(api_key=VULTR_API_KEY)
@@ -139,7 +141,7 @@ def generar_respuesta_ia(mensaje):
         respuesta_ia = client.ask_question(prompt)
         
         # Agregar el número de teléfono a la respuesta
-        respuesta_final = f"{respuesta_ia}\nPor favor llámanos al 818-244-2184 para más información."
+        respuesta_final = f"{respuesta_ia}\nPor favor llámanos al {PHONE_NUMBER} para más información."
         
         logging.info(f"Respuesta final: {respuesta_final}")
         return respuesta_final
@@ -147,7 +149,7 @@ def generar_respuesta_ia(mensaje):
     except Exception as e:
         logging.error(f"Error en generación IA: {str(e)}")
         logging.error(f"Traceback completo: {traceback.format_exc()}")
-        return "Lo sentimos, hay un problema técnico. Por favor llámanos al 818-244-2184 para más información."
+        return "Lo sentimos, hay un problema técnico. Por favor llámanos al {PHONE_NUMBER} para más información."
     finally:
         logging.info("=== FIN GENERACIÓN IA ===")
 
