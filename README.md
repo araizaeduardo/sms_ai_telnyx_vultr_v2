@@ -38,14 +38,27 @@ pip install -r requirements.txt
 
 4. Crear archivo .env con las siguientes variables:
 ```bash
+# Telnyx API credentials for SMS messaging
 TELNYX_API_KEY=your_api_key
-TELNYX_PUBLIC_KEY=your_public_key
 TELNYX_MESSAGING_PROFILE_ID=your_profile_id
-TELNYX_FROM_NUMBER=+1234567890
-VULTR_CLOUD_INFERENCE_API_KEY=your_vultr_key
-DB_NAME=crm_pipeline.db
-```
+TELNYX_FROM_NUMBER=your_telnyx_number
+TELNYX_TO_NUMBER=destination_number
+TELNYX_PUBLIC_KEY=your_public_key
 
+# Database configuration
+DB_NAME=crm_pipeline.db
+
+# Vultr API configuration for AI inference
+VULTR_CLOUD_INFERENCE_API_KEY=your_vultr_api_key
+
+# Website configuration
+# Used in SMS responses to redirect customers to the booking system
+WEBSITE_URL=your_booking_website
+
+# Contact information
+# Used in SMS responses for customer support
+PHONE_NUMBER=your_support_phone
+```
 ## Ejecución
 
 1. Iniciar el servidor:
