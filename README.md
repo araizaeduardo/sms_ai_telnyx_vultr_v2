@@ -38,26 +38,12 @@ pip install -r requirements.txt
 
 4. Crear archivo .env con las siguientes variables:
 ```bash
-# Telnyx API credentials for SMS messaging
 TELNYX_API_KEY=your_api_key
-TELNYX_MESSAGING_PROFILE_ID=your_profile_id
-TELNYX_FROM_NUMBER=your_telnyx_number
-TELNYX_TO_NUMBER=destination_number
 TELNYX_PUBLIC_KEY=your_public_key
-
-# Database configuration
+TELNYX_MESSAGING_PROFILE_ID=your_profile_id
+TELNYX_FROM_NUMBER=+1234567890
+VULTR_CLOUD_INFERENCE_API_KEY=your_vultr_key
 DB_NAME=crm_pipeline.db
-
-# Vultr API configuration for AI inference
-VULTR_CLOUD_INFERENCE_API_KEY=your_vultr_api_key
-
-# Website configuration
-# Used in SMS responses to redirect customers to the booking system
-WEBSITE_URL=your_booking_website
-
-# Contact information
-# Used in SMS responses for customer support
-PHONE_NUMBER=your_support_phone
 ```
 ## Ejecución
 
@@ -73,6 +59,78 @@ python app.py
 curl -X POST http://localhost:8000/sms \
 -d "Body=Hola, ¿qué servicios ofrecen?" \
 -d "From=+16072222222"
+```
+
+## Ejecución con Gunicorn y Supervisor
+
+### 1. Instalar Gunicorn en el entorno virtual
+```bash
+# Activar el entorno virtual
+source venv/bin/activate  # Linux/macOS
+# o
+.\venv\Scripts\activate   # Windows
+
+# Instalar gunicorn
+pip install gunicorn
+```
+
+### 2. Crear archivo de configuración para Gunicorn
+```bash
+# /ruta/a/tu/proyecto/gunicorn.conf.py
+bind = "0.0.0.0:8000"
+workers = 3
+timeout = 120
+```
+
+### 3. Instalar Supervisor
+```bash
+sudo apt-get install supervisor
+```
+
+### 4. Crear archivo de configuración para Supervisor
+```bash
+# /etc/supervisor/conf.d/chatbot.conf
+[program:chatbot]
+directory=/ruta/a/tu/proyecto
+command=/ruta/a/tu/proyecto/venv/bin/gunicorn -c gunicorn.conf.py app:app
+user=tu_usuario
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/chatbot/chatbot.err.log
+stdout_logfile=/var/log/chatbot/chatbot.out.log
+environment=PATH="/ruta/a/tu/proyecto/venv/bin"
+```
+
+### 5. Crear directorio para logs
+```bash
+sudo mkdir -p /var/log/chatbot
+sudo chown -R tu_usuario:tu_usuario /var/log/chatbot
+```
+
+### 6. Iniciar y gestionar el servicio
+```bash
+# Recargar configuración de supervisor
+sudo supervisorctl reread
+sudo supervisorctl update
+
+# Iniciar el servicio
+sudo supervisorctl start chatbot
+
+# Ver estado
+sudo supervisorctl status chatbot
+
+# Ver logs en tiempo real
+sudo tail -f /var/log/chatbot/chatbot.out.log
+```
+
+### 7. Probar la instalación
+```bash
+# Verificar que Gunicorn está instalado en el entorno virtual
+source venv/bin/activate
+which gunicorn  # Debería mostrar la ruta dentro de tu entorno virtual
+
+# Probar manualmente (opcional)
+gunicorn -c gunicorn.conf.py app:app
 ```
 
 ## Estructura del Proyecto
