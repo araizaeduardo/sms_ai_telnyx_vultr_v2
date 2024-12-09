@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, jsonify, redirect, url_for
 import telnyx
 import random
 import sqlite3
@@ -37,13 +37,15 @@ def init_db():
             mensaje TEXT,
             respuesta TEXT,
             fecha_contacto TEXT,
-            estado TEXT
+            estado TEXT DEFAULT 'Pendiente'
         )
     ''')
     conn.commit()
     conn.close()
+    
+    logging.info("Base de datos inicializada correctamente")
 
-def guardar_cliente(nombre, telefono, mensaje, estado, respuesta=None):
+def guardar_cliente(nombre, telefono, mensaje, estado="Pendiente", respuesta=None):
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
         cursor.execute('''
@@ -225,12 +227,12 @@ def sms():
         telefono_usuario = limpiar_numero_telefono(telefono_usuario)
         respuesta = generar_respuesta_ia(mensaje_entrante)
         
-        # Save to database
+        # Save to database with estado="Pendiente"
         guardar_cliente(
             nombre="Desconocido", 
             telefono=telefono_usuario, 
             mensaje=mensaje_entrante, 
-            estado="Respondido",
+            estado="Pendiente",  # Asegurarse de que sea "Pendiente"
             respuesta=respuesta
         )
         
@@ -253,14 +255,8 @@ def sms():
         return "Error processing webhook", 500
 
 @app.route("/")
-def dashboard():
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM clientes")
-    clientes = cursor.fetchall()
-    conn.close()
-    
-    return render_template("dashboard.html", clientes=clientes)
+def index():
+    return redirect(url_for('kanban'))
 
 def validate_config():
     required_vars = [
@@ -273,6 +269,82 @@ def validate_config():
     missing = [var for var in required_vars if not os.getenv(var)]
     if missing:
         raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
+
+# Agregar esta nueva ruta después de las rutas existentes
+@app.route("/actualizar_estado", methods=["POST"])
+def actualizar_estado():
+    try:
+        data = request.json
+        mensaje_id = data.get('mensaje_id')
+        nuevo_estado = data.get('estado')
+        
+        # Extraer el ID numérico del mensaje_id (eliminar el prefijo 'mensaje-')
+        mensaje_id = mensaje_id.replace('mensaje-', '')
+        
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE clientes 
+            SET estado = ? 
+            WHERE id = ?
+        """, (nuevo_estado, mensaje_id))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        logging.error(f"Error actualizando estado: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/kanban")
+def kanban():
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        # Obtener todos los registros agrupados por estado
+        cursor.execute("""
+            SELECT 
+                id,
+                nombre,
+                telefono,
+                mensaje,
+                respuesta,
+                fecha_contacto,
+                estado
+            FROM clientes 
+            ORDER BY fecha_contacto DESC
+        """)
+        
+        clientes = cursor.fetchall()
+        
+        # Agregar logging para debug
+        logging.info(f"Total de clientes recuperados: {len(clientes)}")
+        for cliente in clientes:
+            logging.info(f"Cliente ID: {cliente[0]}, Estado: {cliente[6]}, Teléfono: {cliente[2]}")
+        
+        # Organizar clientes por estado
+        pendientes = [c for c in clientes if c[6] == 'Pendiente']
+        en_proceso = [c for c in clientes if c[6] == 'En Proceso']
+        en_revision = [c for c in clientes if c[6] == 'En Revisión']
+        completados = [c for c in clientes if c[6] == 'Completado']
+        
+        # Logging de conteos
+        logging.info(f"Pendientes: {len(pendientes)}")
+        logging.info(f"En Proceso: {len(en_proceso)}")
+        logging.info(f"En Revisión: {len(en_revision)}")
+        logging.info(f"Completados: {len(completados)}")
+        
+        conn.close()
+        
+        return render_template("kanban.html", 
+                             pendientes=pendientes,
+                             en_proceso=en_proceso,
+                             en_revision=en_revision,
+                             completados=completados)
+    except Exception as e:
+        logging.error(f"Error recuperando datos: {str(e)}")
+        return "Error recuperando datos", 500
 
 if __name__ == "__main__":
     setup_logging()

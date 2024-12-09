@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tablero de Seguimiento</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .kanban-board {
+            display: flex;
+            gap: 1rem;
+            padding: 1rem;
+            min-height: 80vh;
+            overflow-x: auto;
+        }
+        
+        .kanban-column {
+            min-width: 350px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            flex: 1;
+        }
+        
+        .column-header {
+            font-weight: bold;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .pendiente .column-header { background: #cfe2ff; }
+        .en-proceso .column-header { background: #fff3cd; }
+        .en-revision .column-header { background: #e2d9f3; }
+        .completado .column-header { background: #d1e7dd; }
+        
+        .task-card {
+            background: white;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            cursor: move;
+        }
+        
+        .task-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .task-phone {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+
+        .task-date {
+            font-size: 0.8em;
+            color: #999;
+        }
+
+        .task-message {
+            margin-top: 0.5rem;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .kanban-board {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .kanban-column {
+                min-width: auto;
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="kanban-board">
+            <div class="kanban-column pendiente" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <div class="column-header">Pendientes ({{ pendientes|length }})</div>
+                {% for cliente in pendientes %}
+                <div class="task-card" draggable="true" ondragstart="drag(event)" id="task-{{ cliente[0] }}" data-id="{{ cliente[0] }}">
+                    <div class="task-phone">📱 {{ cliente[2] }}</div>
+                    <div class="task-message">{{ cliente[3]|truncate(100) }}</div>
+                    <div class="task-date">{{ cliente[5] }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="kanban-column en-proceso" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <div class="column-header">En Proceso ({{ en_proceso|length }})</div>
+                {% for cliente in en_proceso %}
+                <div class="task-card" draggable="true" ondragstart="drag(event)" id="task-{{ cliente[0] }}" data-id="{{ cliente[0] }}">
+                    <div class="task-phone">📱 {{ cliente[2] }}</div>
+                    <div class="task-message">{{ cliente[3]|truncate(100) }}</div>
+                    <div class="task-date">{{ cliente[5] }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="kanban-column en-revision" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <div class="column-header">En Revisión ({{ en_revision|length }})</div>
+                {% for cliente in en_revision %}
+                <div class="task-card" draggable="true" ondragstart="drag(event)" id="task-{{ cliente[0] }}" data-id="{{ cliente[0] }}">
+                    <div class="task-phone">📱 {{ cliente[2] }}</div>
+                    <div class="task-message">{{ cliente[3]|truncate(100) }}</div>
+                    <div class="task-date">{{ cliente[5] }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="kanban-column completado" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <div class="column-header">Completados ({{ completados|length }})</div>
+                {% for cliente in completados %}
+                <div class="task-card" draggable="true" ondragstart="drag(event)" id="task-{{ cliente[0] }}" data-id="{{ cliente[0] }}">
+                    <div class="task-phone">📱 {{ cliente[2] }}</div>
+                    <div class="task-message">{{ cliente[3]|truncate(100) }}</div>
+                    <div class="task-date">{{ cliente[5] }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function allowDrop(ev) {
+            ev.preventDefault();
+        }
+
+        function drag(ev) {
+            ev.dataTransfer.setData("text", ev.target.id);
+            ev.target.classList.add('dragging');
+        }
+
+        function drop(ev) {
+            ev.preventDefault();
+            const data = ev.dataTransfer.getData("text");
+            const draggedElement = document.getElementById(data);
+            draggedElement.classList.remove('dragging');
+            
+            let dropZone = ev.target;
+            
+            while (dropZone && !dropZone.classList.contains('kanban-column')) {
+                dropZone = dropZone.parentElement;
+            }
+            
+            if (dropZone && dropZone.classList.contains('kanban-column')) {
+                // Determinar el nuevo estado basado en la columna
+                let nuevoEstado;
+                if (dropZone.classList.contains('pendiente')) nuevoEstado = 'Pendiente';
+                else if (dropZone.classList.contains('en-proceso')) nuevoEstado = 'En Proceso';
+                else if (dropZone.classList.contains('en-revision')) nuevoEstado = 'En Revisión';
+                else if (dropZone.classList.contains('completado')) nuevoEstado = 'Completado';
+
+                // Actualizar en la base de datos
+                const taskId = draggedElement.getAttribute('data-id');
+                actualizarEstado(taskId, nuevoEstado);
+
+                dropZone.appendChild(draggedElement);
+                updateColumnCounts();
+            }
+        }
+
+        function actualizarEstado(taskId, nuevoEstado) {
+            fetch('/actualizar_estado', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    mensaje_id: taskId,
+                    estado: nuevoEstado
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    console.error('Error actualizando estado:', data.error);
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        function updateColumnCounts() {
+            document.querySelectorAll('.kanban-column').forEach(column => {
+                const taskCount = column.querySelectorAll('.task-card').length;
+                const header = column.querySelector('.column-header');
+                const columnName = header.textContent.split('(')[0].trim();
+                header.textContent = `${columnName} (${taskCount})`;
+            });
+        }
+
+        // Initialize task counters
+        updateColumnCounts();
+    </script>
+</body>
+</html>
