@@ -166,3 +166,25 @@ Accede al dashboard en `http://localhost:8000` para:
 
 - [Documentación de Telnyx](https://developers.telnyx.com/)
 - [API de Vultr](https://www.vultr.com/api/)
+
+## Ejemplo de Prueba
+
+Para probar el sistema localmente, puedes usar el siguiente comando curl que simula un mensaje SMS entrante:
+
+```bash
+curl -X POST http://localhost:5005/sms \
+-H "Content-Type: application/json" \
+-d '{
+  "data": {
+    "event_type": "message.received",
+    "payload": {
+      "text": "Hola, necesito información sobre vuelos a Cancún para julio",
+      "from": {
+        "phone_number": "+15041112233"
+      }
+    }
+  }
+}'
+```
+
+**Nota**: El número de teléfono es ficticio y solo para propósitos de prueba.
