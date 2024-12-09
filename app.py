@@ -396,4 +396,4 @@ if __name__ == "__main__":
     setup_logging()
     validate_config()
     init_db()
-    app.run(debug=True, port=8000)
+    app.run(debug=True, port=5005)
