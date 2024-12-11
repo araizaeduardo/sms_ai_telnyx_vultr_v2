@@ -392,6 +392,36 @@ def detalle(mensaje_id):
         logging.error(f"Error al obtener detalles del cliente: {str(e)}")
         return "Error al obtener detalles", 500
 
+@app.route('/calendario')
+def calendario():
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT id, nombre, telefono, mensaje, respuesta, 
+                   fecha_contacto, estado
+            FROM clientes 
+            ORDER BY fecha_contacto DESC
+        """)
+        
+        clientes = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        return render_template('calendario.html', 
+                             clientes=clientes,
+                             year=datetime.now().year)
+        
+    except Exception as e:
+        logging.error(f"Error al obtener datos para el calendario: {str(e)}")
+        return "Error al cargar el calendario", 500
+
+# Agregar este filtro para la fecha en el template
+@app.template_filter('now')
+def datetime_format(value, format='%Y'):
+    return datetime.now().strftime(format)
+
 if __name__ == "__main__":
     setup_logging()
     validate_config()

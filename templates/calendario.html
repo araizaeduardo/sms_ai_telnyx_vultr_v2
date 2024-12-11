@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Calendario de Interacciones{% endblock %}
+
+{% block extra_css %}
+    <link href='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/fullcalendar.min.css' rel='stylesheet' />
+    <link href='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/fullcalendar.print.min.css' rel='stylesheet' media='print' />
+    <style>
+        #calendar {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 10px;
+        }
+        .fc-event {
+            cursor: pointer;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div id="calendar"></div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/fullcalendar.min.js'></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/locale/es.js'></script>
+    <script>
+        $(document).ready(function() {
+            $('#calendar').fullCalendar({
+                header: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'month,agendaWeek,agendaDay'
+                },
+                locale: 'es',
+                navLinks: true,
+                editable: false,
+                eventLimit: true,
+                events: [
+                    {% for cliente in clientes %}
+                    {
+                        title: '{{ cliente[2] }} - {{ cliente[6] }}',
+                        start: '{{ cliente[5] }}',
+                        description: '{{ cliente[3] }}',
+                        url: '/detalle/{{ cliente[0] }}',
+                        color: '{{ "#FF9F1C" if cliente[6] == "Pendiente" else "#2EC4B6" if cliente[6] == "En Proceso" else "#E71D36" if cliente[6] == "En Revisión" else "#011627" }}'
+                    },
+                    {% endfor %}
+                ],
+                eventClick: function(event) {
+                    if (event.url) {
+                        window.location.href = event.url;
+                        return false;
+                    }
+                },
+                eventRender: function(event, element) {
+                    if (event.description) {
+                        element.attr('title', event.description);
+                    }
+                }
+            });
+        });
+    </script>
+{% endblock %}
