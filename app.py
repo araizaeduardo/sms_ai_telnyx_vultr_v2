@@ -422,6 +422,26 @@ def calendario():
 def datetime_format(value, format='%Y'):
     return datetime.now().strftime(format)
 
+@app.route('/enviar-sms', methods=['POST'])
+def enviar_sms():
+    try:
+        data = request.get_json()
+        telefono = data['telefono']
+        mensaje = data.get('mensaje', '')  # Obtener el mensaje del request
+        
+        # Usar las variables de entorno ya configuradas
+        telnyx.Message.create(
+            from_=os.getenv('TELNYX_FROM_NUMBER'),
+            to=telefono,
+            text=mensaje,  # Usar el mensaje recibido
+            messaging_profile_id=os.getenv('TELNYX_MESSAGING_PROFILE_ID')
+        )
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        logging.error(f"Error enviando SMS: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
 if __name__ == "__main__":
     setup_logging()
     validate_config()

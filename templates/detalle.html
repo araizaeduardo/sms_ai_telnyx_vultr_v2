@@ -140,8 +140,63 @@
             <div class="mt-4 d-flex gap-2">
                 <a href="/kanban" class="btn btn-secondary">Volver al Tablero</a>
                 <button class="btn btn-primary" onclick="window.print()">Imprimir</button>
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#smsModal">
+                    <i class="bi bi-chat-dots"></i> Enviar SMS
+                </button>
             </div>
         </div>
     </div>
+
+    <!-- Modal para SMS -->
+    <div class="modal fade" id="smsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Enviar SMS</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="mensajeSMS" class="form-label">Mensaje:</label>
+                        <textarea class="form-control" id="mensajeSMS" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="enviarSMS('{{ cliente[2] }}')">Enviar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agregar Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function enviarSMS(telefono) {
+            const mensaje = document.getElementById('mensajeSMS').value;
+            fetch('/enviar-sms', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    telefono: telefono,
+                    mensaje: mensaje
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Mensaje enviado correctamente');
+                    bootstrap.Modal.getInstance(document.getElementById('smsModal')).hide();
+                } else {
+                    alert('Error al enviar el mensaje: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Error al enviar el mensaje: ' + error);
+            });
+        }
+    </script>
 </body>
 </html> 
