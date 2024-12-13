@@ -6,4 +6,4 @@ venv/
 .venv/
 logs/*
 !logs/.gitkeep
-*test_data.json
+*test_*
