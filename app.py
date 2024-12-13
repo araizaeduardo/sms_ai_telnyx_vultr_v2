@@ -40,6 +40,16 @@ def init_db():
             estado TEXT DEFAULT 'Pendiente'
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS historial_mensajes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cliente_id INTEGER,
+            mensaje TEXT,
+            tipo TEXT,
+            fecha_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (cliente_id) REFERENCES clientes(id)
+        )
+    ''')
     conn.commit()
     conn.close()
     
@@ -205,50 +215,84 @@ def verify_telnyx_signature(request_data, signature_header, timestamp_header):
 def sms():
     logging.info("=== INICIO DE SOLICITUD SMS ===")
     try:
-        # Get the raw request data and decode it
         raw_data = request.data.decode('utf-8')
         data = json.loads(raw_data)
-        logging.info(f"Received webhook data: {data}")
         
-        # Verify it's a message event
         if data.get('data', {}).get('event_type') != 'message.received':
             logging.warning("Not a message event")
             return "Not a message event", 400
             
-        # Extract message details
         payload = data['data']['payload']
         mensaje_entrante = payload.get('text', '')
         telefono_usuario = payload.get('from', {}).get('phone_number', '')
         
-        logging.info(f"Mensaje: {mensaje_entrante}")
-        logging.info(f"Teléfono: {telefono_usuario}")
-        
-        # Process the message
         telefono_usuario = limpiar_numero_telefono(telefono_usuario)
-        respuesta = generar_respuesta_ia(mensaje_entrante)
         
-        # Save to database with estado="Pendiente"
-        guardar_cliente(
-            nombre="Desconocido", 
-            telefono=telefono_usuario, 
-            mensaje=mensaje_entrante, 
-            estado="Pendiente",  # Asegurarse de que sea "Pendiente"
-            respuesta=respuesta
-        )
+        # Verificar si existe un cliente con este teléfono hoy
+        conn = get_db_connection()
+        cursor = conn.cursor()
         
-        # Send response via Telnyx
-        telnyx.Message.create(
-            from_=os.getenv('TELNYX_FROM_NUMBER'),
-            to=telefono_usuario,
-            text=respuesta,
-            messaging_profile_id=os.getenv('TELNYX_MESSAGING_PROFILE_ID')
-        )
+        # Obtener la fecha actual en formato YYYY-MM-DD
+        hoy = datetime.now().strftime("%Y-%m-%d")
+        
+        cursor.execute("""
+            SELECT id FROM clientes 
+            WHERE telefono = ? 
+            AND date(fecha_contacto) = ?
+        """, (telefono_usuario, hoy))
+        
+        cliente_existente = cursor.fetchone()
+        
+        if cliente_existente:
+            # Si ya existe un cliente hoy, solo guardamos el mensaje en el historial
+            cliente_id = cliente_existente[0]
+            cursor.execute("""
+                INSERT INTO historial_mensajes (cliente_id, mensaje, tipo)
+                VALUES (?, ?, ?)
+            """, (cliente_id, mensaje_entrante, 'recibido'))
+            conn.commit()
+            
+            # Enviar notificación al panel de administración
+            # (Aquí podrías implementar un sistema de notificaciones)
+            
+        else:
+            # Si es el primer mensaje del día, usar IA para responder
+            respuesta = generar_respuesta_ia(mensaje_entrante)
+            
+            # Guardar nuevo cliente
+            cursor.execute("""
+                INSERT INTO clientes (nombre, telefono, mensaje, respuesta, fecha_contacto, estado)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, ("Desconocido", telefono_usuario, mensaje_entrante, respuesta, 
+                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Pendiente"))
+            
+            cliente_id = cursor.lastrowid
+            
+            # Guardar en historial
+            cursor.execute("""
+                INSERT INTO historial_mensajes (cliente_id, mensaje, tipo)
+                VALUES (?, ?, ?)
+            """, (cliente_id, mensaje_entrante, 'recibido'))
+            
+            # Enviar respuesta vía Telnyx
+            telnyx.Message.create(
+                from_=os.getenv('TELNYX_FROM_NUMBER'),
+                to=telefono_usuario,
+                text=respuesta,
+                messaging_profile_id=os.getenv('TELNYX_MESSAGING_PROFILE_ID')
+            )
+            
+            # Guardar respuesta en historial
+            cursor.execute("""
+                INSERT INTO historial_mensajes (cliente_id, mensaje, tipo)
+                VALUES (?, ?, ?)
+            """, (cliente_id, respuesta, 'enviado'))
+            
+        conn.commit()
+        conn.close()
         
         return "OK", 200
         
-    except json.JSONDecodeError as e:
-        logging.error(f"Error decoding JSON: {str(e)}")
-        return "Invalid JSON", 400
     except Exception as e:
         logging.error(f"Error processing webhook: {str(e)}")
         logging.error(traceback.format_exc())
@@ -366,31 +410,50 @@ def last_update():
         logging.error(f"Error checking last update: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/detalle/<int:mensaje_id>')
-def detalle(mensaje_id):
+@app.route('/detalle/<int:id>')
+def detalle_cliente(id):
     try:
-        conn = sqlite3.connect(DB_NAME)
+        conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Obtener todos los campos de la tabla clientes
-        cursor.execute("""
-            SELECT id, nombre, telefono, mensaje, respuesta, 
-                   fecha_contacto, estado
-            FROM clientes 
-            WHERE id = ?
-        """, (mensaje_id,))
-        
+        # Obtener detalles del cliente
+        cursor.execute('SELECT * FROM clientes WHERE id = ?', (id,))
         cliente = cursor.fetchone()
-        conn.close()
         
-        if cliente is None:
-            return "Cliente no encontrado", 404
-            
-        return render_template('detalle.html', cliente=cliente)
+        # Obtener historial de mensajes agrupados por día
+        cursor.execute('''
+            SELECT 
+                mensaje,
+                tipo,
+                strftime('%Y-%m-%d', fecha_hora) as fecha,
+                strftime('%H:%M', fecha_hora) as hora
+            FROM historial_mensajes 
+            WHERE cliente_id = ? 
+            ORDER BY fecha_hora DESC
+        ''', (id,))
+        mensajes = cursor.fetchall()
         
+        # Agrupar mensajes por fecha
+        historial_agrupado = {}
+        for mensaje in mensajes:
+            fecha = mensaje['fecha']
+            if fecha not in historial_agrupado:
+                historial_agrupado[fecha] = []
+            historial_agrupado[fecha].append({
+                'mensaje': mensaje['mensaje'],
+                'tipo': mensaje['tipo'],
+                'hora': mensaje['hora']
+            })
+        
+        return render_template('detalle.html', 
+                             cliente=cliente, 
+                             historial_agrupado=historial_agrupado)
     except Exception as e:
         logging.error(f"Error al obtener detalles del cliente: {str(e)}")
-        return "Error al obtener detalles", 500
+        return f"ERROR: Error al obtener detalles del cliente: {str(e)}"
+    finally:
+        if conn:
+            conn.close()
 
 @app.route('/calendario')
 def calendario():
@@ -427,20 +490,36 @@ def enviar_sms():
     try:
         data = request.get_json()
         telefono = data['telefono']
-        mensaje = data.get('mensaje', '')  # Obtener el mensaje del request
+        mensaje = data.get('mensaje', '')
+        cliente_id = data.get('cliente_id')  # Necesitarás enviar esto desde el frontend
         
-        # Usar las variables de entorno ya configuradas
+        # Enviar SMS con Telnyx
         telnyx.Message.create(
             from_=os.getenv('TELNYX_FROM_NUMBER'),
             to=telefono,
-            text=mensaje,  # Usar el mensaje recibido
+            text=mensaje,
             messaging_profile_id=os.getenv('TELNYX_MESSAGING_PROFILE_ID')
         )
+        
+        # Registrar en el historial
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('''
+            INSERT INTO historial_mensajes (cliente_id, mensaje, tipo)
+            VALUES (?, ?, ?)
+        ''', (data['cliente_id'], data['mensaje'], 'enviado'))
+        conn.commit()
+        conn.close()
         
         return jsonify({'success': True})
     except Exception as e:
         logging.error(f"Error enviando SMS: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
+
+def get_db_connection():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 if __name__ == "__main__":
     setup_logging()

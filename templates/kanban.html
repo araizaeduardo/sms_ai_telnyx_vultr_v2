@@ -146,6 +146,26 @@
                 transform: translateY(0);
             }
         }
+
+        @keyframes blink {
+            0% { 
+                box-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+                transform: scale(1.02);
+            }
+            100% { 
+                box-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+                transform: scale(1);
+            }
+        }
+
+        .card-blink {
+            animation: blink 1s infinite;
+            border: 2px solid red !important;
+        }
     </style>
 {% endblock %}
 
@@ -154,7 +174,7 @@
         <div class="kanban-column pendiente" ondrop="drop(event)" ondragover="allowDrop(event)" role="region" aria-label="Tareas pendientes">
             <div class="column-header">Pendientes ({{ pendientes|length }})</div>
             {% for cliente in pendientes %}
-            <div class="task-card" draggable="true" ondragstart="drag(event)" id="task-{{ cliente[0] }}" data-id="{{ cliente[0] }}" role="article" aria-label="Tarea {{ cliente[2] }}">
+            <div class="task-card" draggable="true" ondragstart="drag(event)" id="task-{{ cliente[0] }}" data-id="{{ cliente[0] }}" role="article" aria-label="Tarea {{ cliente[2] }}" data-cliente-id="{{ cliente[0] }}">
                 <div class="task-phone">📱 {{ cliente[2] }}</div>
                 <div class="task-message">{{ cliente[3]|truncate(100) }}</div>
                 <div class="task-date">{{ cliente[5] }}</div>
@@ -174,7 +194,7 @@
         <div class="kanban-column en-proceso" ondrop="drop(event)" ondragover="allowDrop(event)">
             <div class="column-header">En Proceso ({{ en_proceso|length }})</div>
             {% for cliente in en_proceso %}
-            <div class="task-card" draggable="true" ondragstart="drag(event)" id="task-{{ cliente[0] }}" data-id="{{ cliente[0] }}">
+            <div class="task-card" draggable="true" ondragstart="drag(event)" id="task-{{ cliente[0] }}" data-id="{{ cliente[0] }}" data-cliente-id="{{ cliente[0] }}">
                 <div class="task-phone">📱 {{ cliente[2] }}</div>
                 <div class="task-message">{{ cliente[3]|truncate(100) }}</div>
                 <div class="task-date">{{ cliente[5] }}</div>
@@ -195,7 +215,7 @@
         <div class="kanban-column en-revision" ondrop="drop(event)" ondragover="allowDrop(event)">
             <div class="column-header">En Revisión ({{ en_revision|length }})</div>
             {% for cliente in en_revision %}
-            <div class="task-card" draggable="true" ondragstart="drag(event)" id="task-{{ cliente[0] }}" data-id="{{ cliente[0] }}">
+            <div class="task-card" draggable="true" ondragstart="drag(event)" id="task-{{ cliente[0] }}" data-id="{{ cliente[0] }}" data-cliente-id="{{ cliente[0] }}">
                 <div class="task-phone">📱 {{ cliente[2] }}</div>
                 <div class="task-message">{{ cliente[3]|truncate(100) }}</div>
                 <div class="task-date">{{ cliente[5] }}</div>
@@ -215,7 +235,7 @@
         <div class="kanban-column completado" ondrop="drop(event)" ondragover="allowDrop(event)">
             <div class="column-header">Completados ({{ completados|length }})</div>
             {% for cliente in completados %}
-            <div class="task-card" draggable="true" ondragstart="drag(event)" id="task-{{ cliente[0] }}" data-id="{{ cliente[0] }}">
+            <div class="task-card" draggable="true" ondragstart="drag(event)" id="task-{{ cliente[0] }}" data-id="{{ cliente[0] }}" data-cliente-id="{{ cliente[0] }}">
                 <div class="task-phone">📱 {{ cliente[2] }}</div>
                 <div class="task-actions">
                     <button class="btn btn-sm btn-outline-primary btn-detail" onclick="verDetalle('{{ cliente[0] }}')">
@@ -347,7 +367,7 @@
                 btnGroup.innerHTML = `
                     <button class="btn btn-sm btn-outline-secondary" onclick="moverTarea('${taskId}', 'izquierda')">&lt;&lt;</button>
                     <button class="btn btn-sm btn-outline-secondary" onclick="moverTarea('${taskId}', 'derecha')">&gt;&gt;</button>
-                    <button class="btn btn-sm btn-outline-success" onclick="moverTarea('${taskId}', 'completar')">���︎</button>
+                    <button class="btn btn-sm btn-outline-success" onclick="moverTarea('${taskId}', 'completar')">✔︎</button>
                 `;
             } else if (currentColumn.classList.contains('en-revision')) {
                 btnGroup.innerHTML = `
@@ -416,6 +436,91 @@
                         console.error('Error al mover la tarea:', error);
                         alert('Error al mover la tarea. Por favor, intente nuevamente.');
                     });
+            }
+        }
+
+        let lastMessageCount = 0; // Variable para rastrear la cantidad de mensajes nuevos
+
+        function checkNewMessages() {
+            fetch('/check-new-messages')
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Mensajes nuevos recibidos:", data);
+                    if (data.nuevos_mensajes && data.nuevos_mensajes.length > 0) {
+                        // Si hay más mensajes nuevos que antes, refrescar la página
+                        if (data.nuevos_mensajes.length > lastMessageCount) {
+                            console.log("Nuevos mensajes detectados, refrescando página...");
+                            location.reload();
+                            return;
+                        }
+
+                        // Aplicar animación a las tarjetas con mensajes nuevos
+                        data.nuevos_mensajes.forEach(clienteId => {
+                            const card = document.querySelector(`.task-card[data-id="${clienteId}"]`);
+                            console.log("Tarjeta encontrada:", card, "para cliente:", clienteId);
+                            if (card) {
+                                card.classList.add('card-blink');
+                            }
+                        });
+
+                        lastMessageCount = data.nuevos_mensajes.length;
+                    }
+                })
+                .catch(error => console.error('Error checking messages:', error));
+        }
+
+        function markAsRead(clienteId) {
+            const card = document.querySelector(`.task-card[data-id="${clienteId}"]`);
+            if (card) {
+                card.classList.remove('card-blink');
+                fetch(`/mark-as-read/${clienteId}`, {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        lastMessageCount--;
+                    }
+                })
+                .catch(error => console.error('Error marking as read:', error));
+            }
+        }
+
+        // Verificar mensajes nuevos cada 5 segundos
+        setInterval(checkNewMessages, 5000);
+        
+        // Verificar al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("Página cargada, verificando mensajes...");
+            checkNewMessages();
+        });
+
+        // Agregar evento click a las tarjetas
+        document.querySelectorAll('.task-card').forEach(card => {
+            card.addEventListener('click', (event) => {
+                const clienteId = card.getAttribute('data-id');
+                console.log("Click en tarjeta:", clienteId);
+                if (clienteId) {
+                    markAsRead(clienteId);
+                }
+            });
+        });
+
+        // Opcional: Agregar título parpadeante cuando hay mensajes nuevos
+        function updateTitle(hasNewMessages) {
+            const baseTitle = "Tablero de Seguimiento";
+            if (hasNewMessages) {
+                document.title = `🔔 ${baseTitle}`;
+                setTimeout(() => {
+                    document.title = baseTitle;
+                    setTimeout(() => {
+                        if (lastMessageCount > 0) {
+                            updateTitle(true);
+                        }
+                    }, 1000);
+                }, 1000);
+            } else {
+                document.title = baseTitle;
             }
         }
     </script>

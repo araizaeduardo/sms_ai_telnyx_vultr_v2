@@ -136,6 +136,24 @@
                 {% endif %}
             </div>
 
+            <!-- Historial de Mensajes -->
+            <div class="conversation-section">
+                <h4 class="mb-4">Historial de Mensajes</h4>
+                {% for fecha, mensajes in historial_agrupado.items() %}
+                    <div class="date-group mb-4">
+                        <h5 class="date-header">{{ fecha }}</h5>
+                        {% for mensaje in mensajes %}
+                            <div class="message-bubble {% if mensaje.tipo == 'enviado' %}message-respuesta{% else %}message-cliente{% endif %}">
+                                <div class="message-content">{{ mensaje.mensaje }}</div>
+                                <div class="metadata">
+                                    {{ mensaje.hora }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+
             <!-- Botones de acción -->
             <div class="mt-4 d-flex gap-2">
                 <a href="/kanban" class="btn btn-secondary">Volver al Tablero</a>
@@ -181,14 +199,15 @@
                 },
                 body: JSON.stringify({
                     telefono: telefono,
-                    mensaje: mensaje
+                    mensaje: mensaje,
+                    cliente_id: {{ cliente[0] }}
                 })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
                     alert('Mensaje enviado correctamente');
-                    bootstrap.Modal.getInstance(document.getElementById('smsModal')).hide();
+                    location.reload();
                 } else {
                     alert('Error al enviar el mensaje: ' + data.error);
                 }

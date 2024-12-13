@@ -1,0 +1,11 @@
+{
+  "data": {
+    "event_type": "message.received",
+    "payload": {
+      "text": "Me olvide con hotel y carro",
+      "from": {
+        "phone_number": "+19512175930"
+      }
+    }
+  }
+}
