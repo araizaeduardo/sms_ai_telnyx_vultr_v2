@@ -68,6 +68,17 @@
             margin-bottom: 1rem;
             padding: 1rem;
             border-radius: 8px;
+            transition: background-color 0.3s ease;
+        }
+
+        .message-nuevo {
+            background-color: #fff3cd !important; /* Amarillo claro */
+            border: 1px solid #ffeeba;
+        }
+
+        .message-leido {
+            background-color: #d4edda !important; /* Verde claro */
+            border: 1px solid #c3e6cb;
         }
 
         .message-cliente {
@@ -84,6 +95,27 @@
             font-size: 0.8em;
             color: #6c757d;
             margin-top: 0.5rem;
+        }
+
+        .message-container {
+            position: relative;
+        }
+
+        .message-controls {
+            padding-top: 0.5rem;
+        }
+
+        .message-notes {
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+
+        .message-notes:hover {
+            opacity: 1;
+        }
+
+        .message-content-wrapper {
+            width: 100%;
         }
     </style>
 </head>
@@ -143,10 +175,32 @@
                     <div class="date-group mb-4">
                         <h5 class="date-header">{{ fecha }}</h5>
                         {% for mensaje in mensajes %}
-                            <div class="message-bubble {% if mensaje.tipo == 'enviado' %}message-respuesta{% else %}message-cliente{% endif %}">
-                                <div class="message-content">{{ mensaje.mensaje }}</div>
-                                <div class="metadata">
-                                    {{ mensaje.hora }}
+                            <div class="message-container d-flex align-items-start gap-2 mb-3">
+                                <div class="message-controls">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" 
+                                               id="check-{{ mensaje.id }}"
+                                               {% if mensaje.estado and mensaje.estado != 0 %}checked{% endif %}
+                                               onchange="actualizarEstadoMensaje(this, {{ mensaje.id }})">
+                                    </div>
+                                </div>
+                                <div class="message-content-wrapper flex-grow-1">
+                                    <div class="message-bubble {% if mensaje.tipo == 'enviado' %}message-respuesta{% else %}message-cliente{% endif %} {% if not mensaje.estado or mensaje.estado == 0 %}message-nuevo{% else %}message-leido{% endif %}"
+                                         id="mensaje-{{ mensaje.id }}">
+                                        <div class="message-content">{{ mensaje.mensaje }}</div>
+                                        <div class="metadata">
+                                            {{ mensaje.hora }}
+                                            {% if not mensaje.estado or mensaje.estado == 0 %}
+                                                <span class="badge bg-warning">Nuevo</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="message-notes mt-2">
+                                        <input type="text" class="form-control form-control-sm" 
+                                               placeholder="Agregar nota..."
+                                               value="{{ mensaje.nota or '' }}"
+                                               onchange="guardarNota(this, {{ mensaje.id }})">
+                                    </div>
                                 </div>
                             </div>
                         {% endfor %}
@@ -216,6 +270,209 @@
                 alert('Error al enviar el mensaje: ' + error);
             });
         }
+
+        function actualizarEstadoMensaje(checkbox, mensajeId) {
+            const mensajeBubble = document.getElementById(`mensaje-${mensajeId}`);
+            
+            fetch('/actualizar-estado-mensaje', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    mensaje_id: mensajeId,
+                    estado: checkbox.checked
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (checkbox.checked) {
+                        mensajeBubble.classList.remove('message-nuevo');
+                        mensajeBubble.classList.add('message-leido');
+                    } else {
+                        mensajeBubble.classList.remove('message-leido');
+                        mensajeBubble.classList.add('message-nuevo');
+                    }
+                } else {
+                    alert('Error al actualizar el estado del mensaje');
+                    checkbox.checked = !checkbox.checked;
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error);
+                checkbox.checked = !checkbox.checked;
+            });
+        }
+
+        function guardarNota(input, mensajeId) {
+            fetch('/guardar-nota-mensaje', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    mensaje_id: mensajeId,
+                    nota: input.value
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Mostrar indicador de éxito
+                    input.style.backgroundColor = '#e8f5e9';
+                    setTimeout(() => {
+                        input.style.backgroundColor = '';
+                    }, 1000);
+                } else {
+                    alert('Error al guardar la nota');
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error);
+            });
+        }
+
+        // Función para verificar actualizaciones
+        function verificarActualizaciones() {
+            fetch('/check-new-messages')
+            .then(response => response.json())
+            .then(data => {
+                if (data.nuevos_mensajes && data.nuevos_mensajes.includes({{ cliente[0] }})) {
+                    // Guardar el estado solo de los checkboxes existentes (no nuevos)
+                    const estadosCheckboxes = {};
+                    document.querySelectorAll('.form-check-input').forEach(checkbox => {
+                        const mensajeId = checkbox.id.replace('check-', '');
+                        const mensajeBubble = document.getElementById(`mensaje-${mensajeId}`);
+                        // Solo guardar estado si el mensaje no es nuevo
+                        if (!mensajeBubble.classList.contains('message-nuevo')) {
+                            estadosCheckboxes[checkbox.id] = checkbox.checked;
+                        }
+                    });
+                    
+                    // Guardar en sessionStorage
+                    sessionStorage.setItem('checkboxStates', JSON.stringify(estadosCheckboxes));
+                    
+                    // Recargar la página
+                    location.reload();
+                }
+            })
+            .catch(error => console.error('Error verificando actualizaciones:', error));
+        }
+
+        // Modificar la función de restauración de estados
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedStates = sessionStorage.getItem('checkboxStates');
+            if (savedStates) {
+                const estados = JSON.parse(savedStates);
+                Object.entries(estados).forEach(([id, checked]) => {
+                    const checkbox = document.getElementById(id);
+                    if (checkbox) {
+                        const mensajeId = id.replace('check-', '');
+                        const mensajeBubble = document.getElementById(`mensaje-${mensajeId}`);
+                        
+                        // Solo restaurar el estado si el mensaje no es nuevo
+                        if (mensajeBubble && !mensajeBubble.classList.contains('message-nuevo')) {
+                            checkbox.checked = checked;
+                            if (checked) {
+                                mensajeBubble.classList.remove('message-nuevo');
+                                mensajeBubble.classList.add('message-leido');
+                            } else {
+                                mensajeBubble.classList.remove('message-leido');
+                                mensajeBubble.classList.add('message-nuevo');
+                            }
+                        }
+                    }
+                });
+                // Limpiar el storage después de restaurar
+                sessionStorage.removeItem('checkboxStates');
+            }
+        });
+
+        // Función para mantener viva la sesión
+        function keepAlive() {
+            fetch('/last_update')
+            .then(response => response.json())
+            .then(data => {
+                // Solo para mantener la conexión activa
+                console.log('Conexión activa');
+            })
+            .catch(error => console.error('Error en keep-alive:', error));
+        }
+
+        // Configurar intervalos de actualización
+        const INTERVALO_VERIFICACION = 30000; // 30 segundos
+        const INTERVALO_KEEP_ALIVE = 240000;  // 4 minutos
+
+        // Iniciar los intervalos cuando la página está visible
+        let verificacionInterval = null;
+        let keepAliveInterval = null;
+
+        function iniciarIntervalos() {
+            verificacionInterval = setInterval(verificarActualizaciones, INTERVALO_VERIFICACION);
+            keepAliveInterval = setInterval(keepAlive, INTERVALO_KEEP_ALIVE);
+        }
+
+        function detenerIntervalos() {
+            if (verificacionInterval) clearInterval(verificacionInterval);
+            if (keepAliveInterval) clearInterval(keepAliveInterval);
+        }
+
+        // Manejar visibilidad de la página
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                detenerIntervalos();
+            } else {
+                iniciarIntervalos();
+                // Verificar inmediatamente al volver a la página
+                verificarActualizaciones();
+            }
+        });
+
+        // Iniciar intervalos cuando la página carga
+        iniciarIntervalos();
+
+        // Agregar indicador visual de actualización
+        const statusIndicator = document.createElement('div');
+        statusIndicator.style.position = 'fixed';
+        statusIndicator.style.bottom = '10px';
+        statusIndicator.style.right = '10px';
+        statusIndicator.style.padding = '5px 10px';
+        statusIndicator.style.borderRadius = '5px';
+        statusIndicator.style.fontSize = '12px';
+        statusIndicator.style.opacity = '0.7';
+        statusIndicator.style.backgroundColor = '#28a745';
+        statusIndicator.style.color = 'white';
+        statusIndicator.textContent = 'Actualización automática activada';
+        document.body.appendChild(statusIndicator);
+
+        // Mostrar última actualización
+        const lastUpdateIndicator = document.createElement('div');
+        lastUpdateIndicator.style.position = 'fixed';
+        lastUpdateIndicator.style.bottom = '35px';
+        lastUpdateIndicator.style.right = '10px';
+        lastUpdateIndicator.style.padding = '5px 10px';
+        lastUpdateIndicator.style.borderRadius = '5px';
+        lastUpdateIndicator.style.fontSize = '12px';
+        lastUpdateIndicator.style.opacity = '0.7';
+        lastUpdateIndicator.style.backgroundColor = '#6c757d';
+        lastUpdateIndicator.style.color = 'white';
+        document.body.appendChild(lastUpdateIndicator);
+
+        function actualizarIndicadorTiempo() {
+            const ahora = new Date();
+            lastUpdateIndicator.textContent = `Última verificación: ${ahora.toLocaleTimeString()}`;
+        }
+
+        // Actualizar el indicador de tiempo cada vez que se verifica
+        const verificacionOriginal = verificarActualizaciones;
+        verificarActualizaciones = function() {
+            verificacionOriginal();
+            actualizarIndicadorTiempo();
+        };
+
+        // Mostrar tiempo inicial
+        actualizarIndicadorTiempo();
     </script>
 </body>
 </html> 

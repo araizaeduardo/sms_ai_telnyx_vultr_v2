@@ -147,24 +147,38 @@
             }
         }
 
-        @keyframes blink {
-            0% { 
-                box-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+        @keyframes cardGlow {
+            0% {
+                box-shadow: 0 0 5px rgba(255, 193, 7, 0.5); /* Amarillo claro */
                 transform: scale(1);
             }
-            50% { 
-                box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+            50% {
+                box-shadow: 0 0 10px rgba(255, 165, 0, 0.8); /* Naranja */
                 transform: scale(1.02);
             }
-            100% { 
-                box-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+            100% {
+                box-shadow: 0 0 5px rgba(255, 193, 7, 0.5); /* Amarillo claro */
                 transform: scale(1);
             }
         }
 
         .card-blink {
-            animation: blink 1s infinite;
-            border: 2px solid red !important;
+            animation: cardGlow 1.5s ease-in-out infinite; /* Animación más suave */
+            border: 2px solid #ffc107; /* Borde amarillo */
+            position: relative;
+        }
+
+        .card-blink::before {
+            content: '🔔'; /* Ícono de campana */
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            font-size: 1.2em;
+            color: #ff9800; /* Naranja */
+        }
+
+        .card-blink.transitioning { /* Clase para la transición suave al quitar la animación */
+            transition: all 0.3s ease;
         }
     </style>
 {% endblock %}
@@ -445,23 +459,23 @@
             fetch('/check-new-messages')
                 .then(response => response.json())
                 .then(data => {
-                    console.log("Mensajes nuevos recibidos:", data);
                     if (data.nuevos_mensajes && data.nuevos_mensajes.length > 0) {
                         // Si hay más mensajes nuevos que antes, refrescar la página
                         if (data.nuevos_mensajes.length > lastMessageCount) {
-                            console.log("Nuevos mensajes detectados, refrescando página...");
-                            location.reload();
-                            return;
+                            // Reproducir sonido de notificación (opcional)
+                            const audio = new Audio('/static/notification.mp3');
+                            audio.play().catch(e => console.log('Error reproduciendo audio:', e));
+                            
+                            // Aplicar animación a las tarjetas con mensajes nuevos
+                            data.nuevos_mensajes.forEach(clienteId => {
+                                const card = document.querySelector(`.task-card[data-id="${clienteId}"]`);
+                                if (card) {
+                                    card.classList.add('card-blink');
+                                    // Actualizar el título de la página
+                                    updateTitle(true);
+                                }
+                            });
                         }
-
-                        // Aplicar animación a las tarjetas con mensajes nuevos
-                        data.nuevos_mensajes.forEach(clienteId => {
-                            const card = document.querySelector(`.task-card[data-id="${clienteId}"]`);
-                            console.log("Tarjeta encontrada:", card, "para cliente:", clienteId);
-                            if (card) {
-                                card.classList.add('card-blink');
-                            }
-                        });
 
                         lastMessageCount = data.nuevos_mensajes.length;
                     }
@@ -469,10 +483,21 @@
                 .catch(error => console.error('Error checking messages:', error));
         }
 
+        // Detener el parpadeo al hacer clic en la tarjeta
         function markAsRead(clienteId) {
-            const card = document.querySelector(`.task-card[data-id="${clienteId}"]`);
+            const card = document.getElementById(`task-${clienteId}`);
             if (card) {
-                card.classList.remove('card-blink');
+                // Agregar clase para transición suave
+                card.classList.add('transitioning');
+                // Esperar un poco para que la transición se aplique antes de remover la clase
+                setTimeout(() => {
+                    card.classList.remove('card-blink', 'transitioning');
+                }, 300); // Ajusta el tiempo según la duración de la transición
+
+                //Reproducir sonido (opcional)
+                const audio = new Audio('/static/notification.mp3');
+                audio.play();
+
                 fetch(`/mark-as-read/${clienteId}`, {
                     method: 'POST'
                 })
@@ -480,6 +505,10 @@
                 .then(data => {
                     if (data.success) {
                         lastMessageCount--;
+                        // Si no hay más mensajes nuevos, restaurar el título
+                        if (lastMessageCount === 0) {
+                            updateTitle(false);
+                        }
                     }
                 })
                 .catch(error => console.error('Error marking as read:', error));
@@ -523,5 +552,80 @@
                 document.title = baseTitle;
             }
         }
+
+        function updateKanbanBoard() {
+            fetch('/get-kanban-data')
+                .then(response => response.json())
+                .then(data => {
+                    // Actualizar cada columna
+                    updateColumn('pendiente', data.pendientes);
+                    updateColumn('en-proceso', data.en_proceso);
+                    updateColumn('en-revision', data.en_revision);
+                    updateColumn('completado', data.completados);
+                    updateColumnCounts();
+                })
+                .catch(error => console.error('Error updating board:', error));
+        }
+
+        function updateColumn(columnClass, tasks) {
+            const column = document.querySelector(`.kanban-column.${columnClass}`);
+            const existingTasks = new Set(Array.from(column.querySelectorAll('.task-card')).map(card => card.dataset.id));
+            
+            tasks.forEach(task => {
+                const taskId = task[0];
+                if (!existingTasks.has(taskId.toString())) {
+                    // Es una nueva tarea, agregarla con animación
+                    const taskCard = createTaskCard(task);
+                    column.appendChild(taskCard);
+                    taskCard.classList.add('appearing');
+                    setTimeout(() => taskCard.classList.remove('appearing'), 300);
+                }
+                existingTasks.delete(taskId.toString());
+            });
+            
+            // Remover tareas que ya no están en la lista
+            existingTasks.forEach(taskId => {
+                const card = column.querySelector(`[data-id="${taskId}"]`);
+                if (card) {
+                    card.classList.add('moving');
+                    setTimeout(() => card.remove(), 300);
+                }
+            });
+        }
+
+        function createTaskCard(task) {
+            const div = document.createElement('div');
+            div.className = 'task-card';
+            div.draggable = true;
+            div.id = `task-${task[0]}`;
+            div.setAttribute('data-id', task[0]);
+            div.setAttribute('data-cliente-id', task[0]);
+            
+            div.innerHTML = `
+                <div class="task-phone">📱 ${task[2]}</div>
+                <div class="task-message">${task[3]}</div>
+                <div class="task-date">${task[5]}</div>
+                <div class="task-actions">
+                    <button class="btn btn-sm btn-outline-primary btn-detail" onclick="verDetalle('${task[0]}')">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                    <div class="btn-group ms-2">
+                        <!-- Los botones se agregarán dinámicamente -->
+                    </div>
+                </div>
+            `;
+            
+            // Agregar event listeners
+            div.addEventListener('dragstart', (e) => drag(e));
+            actualizarBotones(div);
+            
+            return div;
+        }
+
+        // Iniciar la actualización periódica
+        setInterval(updateKanbanBoard, 30000); // Cada 30 segundos
+
+        // También actualizar cuando la página se carga
+        document.addEventListener('DOMContentLoaded', updateKanbanBoard);
     </script>
 {% endblock %}

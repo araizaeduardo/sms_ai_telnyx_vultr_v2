@@ -11,6 +11,7 @@ import hashlib
 import json
 import logging
 from logging.handlers import RotatingFileHandler
+import traceback  # Agregar esta importación al inicio del archivo
 
 # Cargar variables de entorno
 load_dotenv()
@@ -29,6 +30,8 @@ PHONE_NUMBER = os.getenv('PHONE_NUMBER', '818-244-2184')
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
+    
+    # Tabla de clientes existente
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS clientes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,6 +43,8 @@ def init_db():
             estado TEXT DEFAULT 'Pendiente'
         )
     ''')
+    
+    # Tabla de historial_mensajes con nueva columna leido
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS historial_mensajes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,9 +52,29 @@ def init_db():
             mensaje TEXT,
             tipo TEXT,
             fecha_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            leido INTEGER DEFAULT 0,
             FOREIGN KEY (cliente_id) REFERENCES clientes(id)
         )
     ''')
+    
+    # Agregar la columna leido si no existe
+    try:
+        cursor.execute('ALTER TABLE historial_mensajes ADD COLUMN leido INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        # La columna ya existe
+        pass
+    
+    # Agregar nuevas columnas a historial_mensajes si no existen
+    try:
+        cursor.execute('ALTER TABLE historial_mensajes ADD COLUMN estado BOOLEAN DEFAULT FALSE')
+    except sqlite3.OperationalError:
+        pass
+        
+    try:
+        cursor.execute('ALTER TABLE historial_mensajes ADD COLUMN nota TEXT')
+    except sqlite3.OperationalError:
+        pass
+    
     conn.commit()
     conn.close()
     
@@ -76,7 +101,7 @@ class VultrInferenceClient:
             base_url="https://api.vultrinference.com/v1"
         )
 
-    def ask_question(self, prompt, model="llama-3.1-70b-instruct-fp8-gh200", max_tokens=300, temperature=0.7):
+    def ask_question(self, prompt, model="llama-3.1-70b-instruct-fp8", max_tokens=300, temperature=0.7):
         """Send a question to the Vultr Inference API"""
         try:
             messages = [
@@ -247,9 +272,9 @@ def sms():
             # Si ya existe un cliente hoy, solo guardamos el mensaje en el historial
             cliente_id = cliente_existente[0]
             cursor.execute("""
-                INSERT INTO historial_mensajes (cliente_id, mensaje, tipo)
-                VALUES (?, ?, ?)
-            """, (cliente_id, mensaje_entrante, 'recibido'))
+                INSERT INTO historial_mensajes (cliente_id, mensaje, tipo, estado)
+                VALUES (?, ?, ?, ?)
+            """, (cliente_id, mensaje_entrante, 'recibido', 0))
             conn.commit()
             
             # Enviar notificación al panel de administración
@@ -270,11 +295,11 @@ def sms():
             
             # Guardar en historial
             cursor.execute("""
-                INSERT INTO historial_mensajes (cliente_id, mensaje, tipo)
-                VALUES (?, ?, ?)
-            """, (cliente_id, mensaje_entrante, 'recibido'))
+                INSERT INTO historial_mensajes (cliente_id, mensaje, tipo, estado)
+                VALUES (?, ?, ?, ?)
+            """, (cliente_id, mensaje_entrante, 'recibido', 0))
             
-            # Enviar respuesta vía Telnyx
+            # Enviar respuesta va Telnyx
             telnyx.Message.create(
                 from_=os.getenv('TELNYX_FROM_NUMBER'),
                 to=telefono_usuario,
@@ -398,8 +423,8 @@ def last_update():
         
         # Obtener la fecha de la última actualización
         cursor.execute("""
-            SELECT MAX(fecha_contacto)
-            FROM clientes
+            SELECT MAX(fecha_hora)
+            FROM historial_mensajes
         """)
         
         last_update = cursor.fetchone()[0] or ''
@@ -420,13 +445,16 @@ def detalle_cliente(id):
         cursor.execute('SELECT * FROM clientes WHERE id = ?', (id,))
         cliente = cursor.fetchone()
         
-        # Obtener historial de mensajes agrupados por día
+        # Modificar la consulta para incluir el ID del mensaje
         cursor.execute('''
             SELECT 
+                id,
                 mensaje,
                 tipo,
                 strftime('%Y-%m-%d', fecha_hora) as fecha,
-                strftime('%H:%M', fecha_hora) as hora
+                strftime('%H:%M', fecha_hora) as hora,
+                estado,
+                nota
             FROM historial_mensajes 
             WHERE cliente_id = ? 
             ORDER BY fecha_hora DESC
@@ -440,9 +468,12 @@ def detalle_cliente(id):
             if fecha not in historial_agrupado:
                 historial_agrupado[fecha] = []
             historial_agrupado[fecha].append({
+                'id': mensaje['id'],
                 'mensaje': mensaje['mensaje'],
                 'tipo': mensaje['tipo'],
-                'hora': mensaje['hora']
+                'hora': mensaje['hora'],
+                'estado': mensaje['estado'],
+                'nota': mensaje['nota']
             })
         
         return render_template('detalle.html', 
@@ -521,8 +552,175 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
+@app.route('/mark-as-read/<int:cliente_id>', methods=['POST'])
+def mark_as_read(cliente_id):
+    conn = None
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        # Primero, verificamos si el cliente existe
+        cursor.execute("SELECT id FROM clientes WHERE id = ?", (cliente_id,))
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({'success': False, 'error': 'Cliente no encontrado'}), 404
+
+        # Actualizamos el estado de los mensajes nuevos
+        cursor.execute("""
+            UPDATE historial_mensajes 
+            SET leido = 1 
+            WHERE cliente_id = ? 
+            AND tipo = 'recibido' 
+            AND (leido IS NULL OR leido = 0)
+        """, (cliente_id,))
+        
+        # También podemos actualizar la tabla de clientes si es necesario
+        cursor.execute("""
+            UPDATE clientes 
+            SET estado = CASE 
+                WHEN estado = 'Pendiente' THEN 'En Proceso'
+                ELSE estado 
+            END
+            WHERE id = ?
+        """, (cliente_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True})
+
+    except Exception as e:
+        logging.error(f"Error al marcar como leído: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        if conn:
+            conn.close()
+
+# También necesitaremos una ruta para verificar mensajes nuevos
+@app.route('/check-new-messages')
+def check_new_messages():
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        # Buscar mensajes no leídos
+        cursor.execute("""
+            SELECT DISTINCT c.id
+            FROM clientes c
+            JOIN historial_mensajes hm ON c.id = hm.cliente_id
+            WHERE hm.tipo = 'recibido' 
+            AND (hm.estado IS NULL OR hm.estado = 0)
+            ORDER BY hm.fecha_hora DESC
+        """)
+        
+        nuevos_mensajes = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        
+        return jsonify({'nuevos_mensajes': nuevos_mensajes})
+
+    except Exception as e:
+        logging.error(f"Error al verificar mensajes nuevos: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/get-kanban-data')
+def get_kanban_data():
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT 
+                id,
+                nombre,
+                telefono,
+                mensaje,
+                respuesta,
+                fecha_contacto,
+                estado
+            FROM clientes 
+            ORDER BY fecha_contacto DESC
+        """)
+        
+        clientes = cursor.fetchall()
+        
+        # Organizar clientes por estado
+        pendientes = [list(c) for c in clientes if c[6] == 'Pendiente']
+        en_proceso = [list(c) for c in clientes if c[6] == 'En Proceso']
+        en_revision = [list(c) for c in clientes if c[6] == 'En Revisión']
+        completados = [list(c) for c in clientes if c[6] == 'Completado']
+        
+        conn.close()
+        
+        return jsonify({
+            'pendientes': pendientes,
+            'en_proceso': en_proceso,
+            'en_revision': en_revision,
+            'completados': completados
+        })
+        
+    except Exception as e:
+        logging.error(f"Error obteniendo datos del kanban: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/actualizar-estado-mensaje', methods=['POST'])
+def actualizar_estado_mensaje():
+    try:
+        data = request.get_json()
+        mensaje_id = data['mensaje_id']
+        estado = data['estado']
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE historial_mensajes 
+            SET estado = ? 
+            WHERE id = ?
+        """, (estado, mensaje_id))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        logging.error(f"Error actualizando estado del mensaje: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/guardar-nota-mensaje', methods=['POST'])
+def guardar_nota_mensaje():
+    try:
+        data = request.get_json()
+        mensaje_id = data['mensaje_id']
+        nota = data['nota']
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE historial_mensajes 
+            SET nota = ? 
+            WHERE id = ?
+        """, (nota, mensaje_id))
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        logging.error(f"Error guardando nota del mensaje: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
+
+def verificar_estructura_tabla():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        PRAGMA table_info(historial_mensajes)
+    ''')
+    columnas = cursor.fetchall()
+    conn.close()
+    print("Estructura de la tabla historial_mensajes:")
+    for columna in columnas:
+        print(columna)
+
 if __name__ == "__main__":
     setup_logging()
     validate_config()
     init_db()
+    verificar_estructura_tabla()
     app.run(debug=True, port=5005)
