@@ -188,3 +188,28 @@ curl -X POST http://localhost:5005/sms \
 ```
 
 **Nota**: El número de teléfono es ficticio y solo para propósitos de prueba.
+
+# Aplicación Flask con Docker
+
+## Construcción y Ejecución del Contenedor
+
+### 1. Construir la imagen Docker
+Para construir la imagen Docker, ejecuta el siguiente comando en la terminal desde el directorio del proyecto:
+
+```bash
+docker build -t mi-app-flask .
+```
+
+### 2. Ejecutar el contenedor
+Una vez construida la imagen, puedes ejecutar el contenedor con:
+
+```bash
+docker run -p 5000:5000 mi-app-flask
+```
+
+La aplicación estará disponible en `http://localhost:5000`
+
+## Notas adicionales
+- El puerto 5000 es el predeterminado, pero puede ser modificado según las necesidades
+- La aplicación se ejecuta con Gunicorn como servidor WSGI
+- Se utilizan 4 workers de Gunicorn por defecto

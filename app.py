@@ -714,13 +714,18 @@ def verificar_estructura_tabla():
     ''')
     columnas = cursor.fetchall()
     conn.close()
-    print("Estructura de la tabla historial_mensajes:")
+    
+    print("\nEstructura de la tabla historial_mensajes:")
+    print("----------------------------------------")
+    print("ID | Nombre | Tipo | NotNull | Default | PK")
+    print("----------------------------------------")
     for columna in columnas:
-        print(columna)
+        print(f"{columna['cid']} | {columna['name']} | {columna['type']} | {columna['notnull']} | {columna['dflt_value']} | {columna['pk']}")
+    print("----------------------------------------\n")
 
 if __name__ == "__main__":
     setup_logging()
     validate_config()
     init_db()
-    verificar_estructura_tabla()
+    # verificar_estructura_tabla()  # Comenta esta línea si no quieres ver la estructura
     app.run(debug=True, port=5005)
