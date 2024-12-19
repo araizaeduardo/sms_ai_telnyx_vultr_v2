@@ -1,215 +1,332 @@
-# Chatbot con Flask y Vultr
+# Sistema de Atención al Cliente con IA y RAG
 
-Sistema de chatbot inteligente que procesa mensajes SMS usando Flask, Vultr y Telnyx.
+Este sistema proporciona una plataforma completa para la gestión de comunicaciones con clientes a través de SMS, utilizando IA para generar respuestas automáticas y RAG (Retrieval Augmented Generation) para proporcionar información actualizada y precisa.
 
 ## Características Principales
 
-- Procesamiento automático de mensajes SMS vía Telnyx
-- Generación de respuestas usando IA de Vultr
-- Almacenamiento de conversaciones en SQLite
-- Panel de control web para monitoreo
+- 🤖 Respuestas automáticas con IA
+- 📚 Sistema RAG para información actualizada
+- 💬 Gestión de SMS con Telnyx
+- 📊 Panel de administración completo
+- 📝 Historial de conversaciones
+- 📅 Vista de calendario
+- 📋 Sistema Kanban
 
 ## Requisitos
 
 - Python 3.8+
-- Cuenta en Telnyx
-- Cuenta en Vultr
-- Conexión a Internet
+- SQLite3
+- Cuenta de Telnyx
+- Cuenta de Vultr Inference
+- Dependencias listadas en `requirements.txt`
 
-## Instalación
+## Configuración
 
-1. Clonar el repositorio:
-```bash
-git clone <url-repositorio>
-cd <nombre-proyecto>
-```
-
-2. Crear y activar entorno virtual:
-```bash
-python3 -m venv venv
-source venv/bin/activate  # Linux/macOS
-.\venv\Scripts\activate   # Windows
-```
-
+1. Clonar el repositorio
+2. Crear un entorno virtual:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # En Windows: venv\Scripts\activate
+   ```
 3. Instalar dependencias:
-```bash
-pip install -r requirements.txt
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Configurar variables de entorno en `.env`:
+   ```env
+   TELNYX_API_KEY=tu_api_key
+   TELNYX_PUBLIC_KEY=tu_public_key
+   VULTR_CLOUD_INFERENCE_API_KEY=tu_api_key
+   TELNYX_FROM_NUMBER=tu_numero
+   TELNYX_MESSAGING_PROFILE_ID=tu_profile_id
+   DB_NAME=crm_pipeline.db
+   WEBSITE_URL=tu_url
+   PHONE_NUMBER=tu_telefono
+   ```
+
+## Estructura de la Base de Datos
+
+El sistema utiliza SQLite con las siguientes tablas principales:
+
+- `clientes`: Información básica de clientes
+- `historial_mensajes`: Registro de todas las comunicaciones
+- `documentos`: Almacenamiento para el sistema RAG
+- `configuracion`: Configuraciones del sistema
+
+## Sistema RAG
+
+### Configuración del Sistema RAG
+
+1. Acceder al panel de administración
+2. Hacer clic en "Gestionar Documentos"
+3. Agregar documentos con la siguiente información:
+   - Título descriptivo
+   - Tipo de documento (precio, contacto, promoción, etc.)
+   - Contenido detallado
+
+### Tipos de Documentos Soportados
+
+- **Precios**: Listas de precios actualizadas
+- **Contacto**: Información de contacto y horarios
+- **Promoción**: Ofertas y descuentos vigentes
+- **Destino**: Información sobre destinos específicos
+
+### Funcionamiento del RAG
+
+1. Al recibir una consulta:
+   - Se genera un embedding del mensaje
+   - Se buscan documentos relevantes
+   - Se incorpora la información al prompt
+   - Se genera una respuesta contextualizada
+
+2. Actualización de información:
+   - Los documentos se pueden actualizar en tiempo real
+   - Los embeddings se generan automáticamente
+   - La información antigua se puede desactivar
+
+## Panel de Administración
+
+### Características Principales
+
+1. **Dashboard**
+   - Estadísticas generales
+   - Gráficos de actividad
+   - Mensajes no leídos
+
+2. **Gestión de Documentos**
+   - Agregar/Editar documentos
+   - Ver historial de cambios
+   - Activar/Desactivar documentos
+
+3. **Configuración de IA**
+   - Editar prompt base
+   - Ajustar parámetros de búsqueda
+   - Ver logs de respuestas
+
+### Vistas Disponibles
+
+- **Kanban**: Gestión visual de casos
+- **Calendario**: Vista temporal de interacciones
+- **Detalle**: Información específica de cada cliente
+
+## Ejemplos de Documentos RAG
+
+### 1. Ejemplo de Precios
+
+```json
+{
+    "titulo": "Precios Paquetes Cancún Verano 2024",
+    "tipo": "precio",
+    "contenido": "Paquetes todo incluido Cancún 2024:\n
+    - Básico (3 noches): $599 USD por persona\n
+    - Estándar (5 noches): $899 USD por persona\n
+    - Premium (7 noches): $1,299 USD por persona\n
+    Incluye: Vuelos, hotel, traslados y seguro de viaje.\n
+    Válido para viajes entre junio y agosto 2024."
+}
 ```
 
-4. Crear archivo .env con las siguientes variables:
-```bash
-TELNYX_API_KEY=your_api_key
-TELNYX_PUBLIC_KEY=your_public_key
-TELNYX_MESSAGING_PROFILE_ID=your_profile_id
-TELNYX_FROM_NUMBER=+1234567890
-VULTR_CLOUD_INFERENCE_API_KEY=your_vultr_key
-DB_NAME=crm_pipeline.db
-```
-## Ejecución
+### 2. Ejemplo de Información de Contacto
 
-1. Iniciar el servidor:
-```bash
-python app.py
-```
-
-2. El servidor estará disponible en: `http://localhost:8000`
-
-3. Probar el endpoint SMS:
-```bash
-curl -X POST http://localhost:8000/sms \
--d "Body=Hola, ¿qué servicios ofrecen?" \
--d "From=+16072222222"
+```json
+{
+    "titulo": "Horarios y Contactos Oficina Central",
+    "tipo": "contacto",
+    "contenido": "Oficina Principal Los Ángeles:\n
+    - Dirección: 123 Travel Street, LA 90001\n
+    - Teléfono: (818) 244-2184\n
+    - WhatsApp: +1 818-244-2184\n
+    - Horario: Lunes a Viernes 9am-7pm, Sábados 10am-3pm\n
+    - Email: info@paseotravel.com"
+}
 ```
 
-## Ejecución con Gunicorn y Supervisor
+### 3. Ejemplo de Promoción
 
-### 1. Instalar Gunicorn en el entorno virtual
-```bash
-# Activar el entorno virtual
-source venv/bin/activate  # Linux/macOS
-# o
-.\venv\Scripts\activate   # Windows
-
-# Instalar gunicorn
-pip install gunicorn
+```json
+{
+    "titulo": "Promoción Especial Riviera Maya",
+    "tipo": "promocion",
+    "contenido": "¡Oferta especial Riviera Maya!\n
+    - 30% descuento en paquetes de 5+ noches\n
+    - Niños menores de 12 años viajan gratis\n
+    - Incluye: Acceso a parques Xcaret y Xel-Há\n
+    - Reserva antes del 30 de enero 2024\n
+    - Válido para viajes hasta diciembre 2024"
+}
 ```
 
-### 2. Crear archivo de configuración para Gunicorn
-```bash
-# /ruta/a/tu/proyecto/gunicorn.conf.py
-bind = "0.0.0.0:8000"
-workers = 3
-timeout = 120
+### 4. Ejemplo de Información de Destino
+
+```json
+{
+    "titulo": "Guía Los Cabos",
+    "tipo": "destino",
+    "contenido": "Los Cabos, Baja California Sur:\n
+    - Mejor temporada: Octubre a Mayo\n
+    - Actividades destacadas: Avistamiento de ballenas, golf, pesca deportiva\n
+    - Playas principales: Médano, Santa María, Chileno\n
+    - Temperatura promedio: 24°C-29°C\n
+    - Vuelos directos desde LAX: 2.5 horas\n
+    - Documentos necesarios: Pasaporte vigente"
+}
 ```
 
-### 3. Instalar Supervisor
-```bash
-sudo apt-get install supervisor
-```
+### Ejemplos de Respuestas del Sistema
 
-### 4. Crear archivo de configuración para Supervisor
-```bash
-# /etc/supervisor/conf.d/chatbot.conf
-[program:chatbot]
-directory=/ruta/a/tu/proyecto
-command=/ruta/a/tu/proyecto/venv/bin/gunicorn -c gunicorn.conf.py app:app
-user=tu_usuario
-autostart=true
-autorestart=true
-stderr_logfile=/var/log/chatbot/chatbot.err.log
-stdout_logfile=/var/log/chatbot/chatbot.out.log
-environment=PATH="/ruta/a/tu/proyecto/venv/bin"
-```
+1. **Consulta sobre precios Cancún**
+   ```
+   Usuario: "¿Cuánto cuesta un paquete a Cancún para julio?"
+   Sistema: "¡Tenemos excelentes opciones para Cancún! Actualmente hay paquetes desde $599 USD por persona (3 noches) hasta $1,299 USD (7 noches) todo incluido para el verano 2024. ¿Te gustaría más detalles sobre las opciones disponibles?"
+   ```
 
-### 5. Crear directorio para logs
-```bash
-sudo mkdir -p /var/log/chatbot
-sudo chown -R tu_usuario:tu_usuario /var/log/chatbot
-```
+2. **Consulta sobre horarios**
+   ```
+   Usuario: "¿Hasta qué hora están abiertos?"
+   Sistema: "Estamos disponibles de lunes a viernes de 9am a 7pm y los sábados de 10am a 3pm. Puedes contactarnos al (818) 244-2184 o por WhatsApp para atención personalizada."
+   ```
 
-### 6. Iniciar y gestionar el servicio
-```bash
-# Recargar configuración de supervisor
-sudo supervisorctl reread
-sudo supervisorctl update
+3. **Consulta sobre promociones**
+   ```
+   Usuario: "¿Tienen alguna promoción para Riviera Maya?"
+   Sistema: "¡Sí! Tenemos una promoción especial con 30% de descuento en paquetes de 5+ noches en Riviera Maya, y los niños menores de 12 años viajan gratis. Incluye acceso a parques Xcaret y Xel-Há."
+   ```
 
-# Iniciar el servicio
-sudo supervisorctl start chatbot
+### Mejores Prácticas para Documentos RAG
 
-# Ver estado
-sudo supervisorctl status chatbot
+1. **Formato del Contenido**
+   - Usar listas con guiones para mejor legibilidad
+   - Incluir precios en formato consistente (USD)
+   - Especificar fechas de validez
+   - Mantener información concisa pero completa
 
-# Ver logs en tiempo real
-sudo tail -f /var/log/chatbot/chatbot.out.log
-```
+2. **Actualización de Documentos**
+   - Actualizar precios regularmente
+   - Marcar promociones expiradas como inactivas
+   - Mantener información de contacto al día
+   - Verificar fechas de validez
 
-### 7. Probar la instalación
-```bash
-# Verificar que Gunicorn está instalado en el entorno virtual
-source venv/bin/activate
-which gunicorn  # Debería mostrar la ruta dentro de tu entorno virtual
+3. **Organización**
+   - Usar títulos descriptivos y específicos
+   - Categorizar correctamente el tipo de documento
+   - Mantener formato consistente
+   - Incluir detalles relevantes para búsquedas
 
-# Probar manualmente (opcional)
-gunicorn -c gunicorn.conf.py app:app
-```
+4. **Contenido Recomendado por Tipo**
 
-## Estructura del Proyecto
+   **Precios:**
+   - Valor en USD
+   - Qué incluye
+   - Fechas de validez
+   - Condiciones principales
 
-```
-.
-├── app.py              # Aplicación principal
-├── templates/          # Plantillas HTML
-│   └── dashboard.html  # Panel de control
-├── .env               # Variables de entorno
-└── requirements.txt    # Dependencias
-```
+   **Contacto:**
+   - Dirección completa
+   - Teléfonos con código de área
+   - Horarios detallados
+   - Medios de contacto alternativos
 
-## Endpoints
+   **Promociones:**
+   - Descuento o beneficio específico
+   - Condiciones
+   - Fechas de validez
+   - Restricciones
 
-- `/` - Panel de control web
-- `/sms` - Endpoint para webhooks de Telnyx (POST)
+   **Destinos:**
+   - Ubicación
+   - Mejor temporada
+   - Atracciones principales
+   - Información práctica
 
-## Panel de Control
+## Mantenimiento
 
-Accede al dashboard en `http://localhost:8000` para:
-- Ver historial de conversaciones
-- Monitorear estado de mensajes
-- Consultar estadísticas
+### Respaldos
+
+Se recomienda realizar respaldos regulares de:
+- Base de datos SQLite
+- Documentos y embeddings
+- Configuraciones personalizadas
+
+### Monitoreo
+
+El sistema incluye logging detallado:
+- Errores de IA
+- Problemas de conexión
+- Fallos en búsqueda RAG
 
 ## Solución de Problemas
 
-1. Verificar logs en consola (modo debug activado)
-2. Confirmar variables de entorno correctas
-3. Validar conexión con Telnyx y Vultr
+### Problemas Comunes
 
-## Documentación Adicional
+1. **Error en respuestas IA**
+   - Verificar conexión con Vultr
+   - Revisar prompt base
+   - Comprobar logs de error
 
-- [Documentación de Telnyx](https://developers.telnyx.com/)
-- [API de Vultr](https://www.vultr.com/api/)
+2. **Documentos no encontrados**
+   - Verificar umbral de similitud
+   - Regenerar embeddings
+   - Comprobar estado del documento
 
-## Ejemplo de Prueba
+3. **SMS no enviados**
+   - Verificar credenciales Telnyx
+   - Comprobar formato de números
+   - Revisar logs de envío
 
-Para probar el sistema localmente, puedes usar el siguiente comando curl que simula un mensaje SMS entrante:
+## Mejores Prácticas
 
-```bash
-curl -X POST http://localhost:5005/sms \
--H "Content-Type: application/json" \
--d '{
-  "data": {
-    "event_type": "message.received",
-    "payload": {
-      "text": "Hola, necesito información sobre vuelos a Cancún para julio",
-      "from": {
-        "phone_number": "+15041112233"
-      }
-    }
-  }
-}'
-```
+1. **Gestión de Documentos**
+   - Mantener información actualizada
+   - Usar títulos descriptivos
+   - Organizar por categorías claras
 
-**Nota**: El número de teléfono es ficticio y solo para propósitos de prueba.
+2. **Configuración de IA**
+   - Mantener prompt base claro
+   - Ajustar umbral según necesidad
+   - Revisar respuestas periódicamente
 
-# Aplicación Flask con Docker
+3. **Monitoreo**
+   - Revisar logs regularmente
+   - Verificar calidad de respuestas
+   - Actualizar información obsoleta
 
-## Construcción y Ejecución del Contenedor
+## Soporte
 
-### 1. Construir la imagen Docker
-Para construir la imagen Docker, ejecuta el siguiente comando en la terminal desde el directorio del proyecto:
+Para problemas técnicos o consultas:
+- Revisar logs en `/logs/app.log`
+- Consultar documentación de APIs
+- Contactar soporte técnico
 
-```bash
-docker build -t mi-app-flask .
-```
+## Licencia
 
-### 2. Ejecutar el contenedor
-Una vez construida la imagen, puedes ejecutar el contenedor con:
+Este proyecto está bajo la licencia MIT. Ver archivo `LICENSE` para más detalles.
 
-```bash
-docker run -p 5000:5000 mi-app-flask
-```
+####
+El sistema RAG está funcionando correctamente ahora con:
 
-La aplicación estará disponible en `http://localhost:5000`
+Generación de embeddings locales usando sentence-transformers
+Almacenamiento de documentos y embeddings en SQLite
+Búsqueda semántica con un umbral de similitud de 0.5
+Logging detallado para monitorear el proceso
+El servidor está corriendo en el puerto 5004 y puedes usar los endpoints:
 
-## Notas adicionales
-- El puerto 5000 es el predeterminado, pero puede ser modificado según las necesidades
-- La aplicación se ejecuta con Gunicorn como servidor WSGI
-- Se utilizan 4 workers de Gunicorn por defecto
+/agregar-documentos-prueba para agregar más documentos
+/test-rag para probar consultas
+/limpiar-db para limpiar la base de datos si es necesario
+
+
+##He agregado:
+
+Un nuevo endpoint /limpiar-mensajes que elimina todos los registros de la tabla historial_mensajes
+Un botón rojo "Limpiar Mensajes" en el panel administrativo junto al botón existente de limpiar base de datos
+La funcionalidad JavaScript que:
+Muestra un diálogo de confirmación antes de limpiar
+Hace la petición POST al endpoint
+Muestra un mensaje de éxito o error
+Recarga la página para mostrar los cambios
+El botón está claramente diferenciado del botón de limpiar toda la base de datos:
+
+"Limpiar Base de Datos" es amarillo (warning) porque es más destructivo
+"Limpiar Mensajes" es rojo (danger) pero solo afecta a los mensajes
+Ahora puedes reiniciar el servidor para que los cambios tomen efecto.
+

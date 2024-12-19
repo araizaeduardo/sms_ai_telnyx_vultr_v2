@@ -6,116 +6,210 @@
     <link href='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/fullcalendar.min.css' rel='stylesheet' />
     <link href='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/fullcalendar.print.min.css' rel='stylesheet' media='print' />
     <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
         .content-container {
             max-width: 100% !important;
-            padding: 1rem;
+            padding: 20px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            border-radius: 10px;
         }
 
         #calendar {
             background: white;
-            padding: 20px;
+            padding: 25px;
             border-radius: 10px;
-            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 15px rgba(0,0,0,0.05);
             margin: 20px auto;
+            border: 1px solid #e9ecef;
         }
 
         /* Personalización del calendario */
         .fc-header-toolbar {
-            padding: 1rem;
+            padding: 1.25rem;
             margin-bottom: 1.5rem !important;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
         }
 
         .fc-button {
-            background: var(--dark-color) !important;
-            border-color: var(--dark-color) !important;
-            color: white !important;
+            background: #ffffff !important;
+            border: 1px solid #dee2e6 !important;
+            color: #495057 !important;
             text-transform: capitalize;
-            padding: 8px 15px !important;
-            border-radius: 5px !important;
+            padding: 8px 16px !important;
+            border-radius: 6px !important;
             transition: all 0.3s ease;
+            font-weight: 500;
+            margin: 0 2px !important;
         }
 
         .fc-button:hover {
-            opacity: 0.9;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            background: #f8f9fa !important;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transform: translateY(-1px);
         }
 
         .fc-today-button {
-            background: var(--primary-color) !important;
-            border-color: var(--primary-color) !important;
+            background: #0d6efd !important;
+            border-color: #0d6efd !important;
+            color: white !important;
+        }
+
+        .fc-today-button:hover {
+            background: #0b5ed7 !important;
+            border-color: #0a58ca !important;
         }
 
         .fc-state-active {
-            background: var(--secondary-color) !important;
-            border-color: var(--secondary-color) !important;
+            background: #e9ecef !important;
+            border-color: #dee2e6 !important;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05) !important;
         }
 
         /* Estilos para los eventos */
         .fc-event {
             border: none !important;
-            padding: 3px 5px !important;
-            border-radius: 4px !important;
+            padding: 6px 10px !important;
+            border-radius: 6px !important;
             margin: 2px 0 !important;
-            transition: transform 0.2s ease;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+            cursor: pointer;
         }
 
         .fc-event:hover {
             transform: translateY(-1px);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        }
+
+        .fc-event .fc-content {
+            padding: 2px 0;
+        }
+
+        .fc-event .fc-time {
+            font-weight: 600;
+            margin-right: 5px;
         }
 
         /* Estados de los eventos */
         .estado-pendiente {
-            background-color: #FF9F1C !important;
-            border-left: 4px solid #cc7f16 !important;
+            background-color: #e3f2fd !important;
+            border-left: 4px solid #0d47a1 !important;
+            color: #0d47a1 !important;
         }
 
         .estado-proceso {
-            background-color: #2EC4B6 !important;
-            border-left: 4px solid #238e84 !important;
+            background-color: #fff3e0 !important;
+            border-left: 4px solid #e65100 !important;
+            color: #e65100 !important;
         }
 
         .estado-revision {
-            background-color: #E71D36 !important;
-            border-left: 4px solid #b8162b !important;
+            background-color: #f3e5f5 !important;
+            border-left: 4px solid #4a148c !important;
+            color: #4a148c !important;
         }
 
         .estado-completado {
-            background-color: #011627 !important;
-            border-left: 4px solid #000a12 !important;
+            background-color: #e8f5e9 !important;
+            border-left: 4px solid #1b5e20 !important;
+            color: #1b5e20 !important;
         }
 
         /* Estilos para el día actual */
         .fc-today {
             background-color: #f8f9fa !important;
-            border: 2px solid var(--primary-color) !important;
+            border: 2px solid #0d6efd !important;
+        }
+
+        .fc-day:hover {
+            background-color: #f8f9fa;
+            cursor: pointer;
         }
 
         /* Estilos para los encabezados */
         .fc-widget-header {
             background-color: #f8f9fa;
-            padding: 10px 0 !important;
-            font-weight: bold;
-            color: var(--dark-color);
+            padding: 12px 0 !important;
+            font-weight: 600;
+            color: #495057;
+            text-transform: uppercase;
+            font-size: 0.9em;
+            border-bottom: 2px solid #e9ecef !important;
+        }
+
+        .fc-day-header {
+            padding: 12px 0 !important;
+        }
+
+        .fc-day-number {
+            font-weight: 500;
+            color: #495057;
+            padding: 8px !important;
+            transition: all 0.3s ease;
+        }
+
+        .fc-day-number:hover {
+            color: #0d6efd;
+            background-color: #e9ecef;
+            border-radius: 50%;
         }
 
         /* Tooltip personalizado */
-        .tooltip {
+        .event-tooltip {
             position: absolute;
             background: white;
-            padding: 10px;
-            border-radius: 4px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             font-size: 0.9em;
             max-width: 300px;
             z-index: 1000;
+            border: 1px solid #e9ecef;
+            pointer-events: none;
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        .event-tooltip.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .event-tooltip-header {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .event-tooltip-body {
+            color: #6c757d;
+            line-height: 1.5;
         }
 
         /* Responsive */
         @media (max-width: 768px) {
+            .content-container {
+                padding: 15px;
+            }
+
+            #calendar {
+                padding: 15px;
+            }
+
             .fc-header-toolbar {
                 flex-direction: column;
-                gap: 10px;
+                gap: 12px;
+                padding: 1rem;
             }
 
             .fc-toolbar-chunk {
@@ -131,8 +225,16 @@
             }
 
             .fc-button {
-                padding: 6px 12px !important;
+                padding: 8px 12px !important;
                 font-size: 0.9em !important;
+            }
+
+            .fc-day-header {
+                font-size: 0.8em !important;
+            }
+
+            .event-tooltip {
+                max-width: 250px;
             }
         }
     </style>
@@ -140,6 +242,10 @@
 
 {% block content %}
     <div id="calendar"></div>
+    <div class="event-tooltip" style="display: none;">
+        <div class="event-tooltip-header"></div>
+        <div class="event-tooltip-body"></div>
+    </div>
 {% endblock %}
 
 {% block extra_js %}
@@ -148,6 +254,9 @@
     <script src='https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/locale/es.js'></script>
     <script>
         $(document).ready(function() {
+            const tooltip = $('.event-tooltip');
+            let tooltipTimeout;
+
             $('#calendar').fullCalendar({
                 header: {
                     left: 'prev,next today',
@@ -158,6 +267,9 @@
                 navLinks: true,
                 editable: false,
                 eventLimit: true,
+                eventLimitText: 'más',
+                displayEventTime: true,
+                timeFormat: 'HH:mm',
                 events: [
                     {% for cliente in clientes %}
                     {
@@ -176,18 +288,60 @@
                     }
                 },
                 eventRender: function(event, element) {
-                    element.attr('title', event.description);
-                    
                     // Agregar icono según el estado
                     var statusIcon = '📱';
                     element.find('.fc-title').prepend(statusIcon + ' ');
+
+                    // Manejar tooltip personalizado
+                    element.on('mouseenter', function(e) {
+                        clearTimeout(tooltipTimeout);
+                        tooltip.find('.event-tooltip-header').text(event.title);
+                        tooltip.find('.event-tooltip-body').text(event.description);
+                        
+                        const rect = element[0].getBoundingClientRect();
+                        tooltip.css({
+                            top: rect.bottom + window.scrollY + 5 + 'px',
+                            left: rect.left + window.scrollX + 'px',
+                            display: 'block'
+                        });
+                        
+                        setTimeout(() => tooltip.addClass('show'), 10);
+                    });
+
+                    element.on('mouseleave', function() {
+                        tooltipTimeout = setTimeout(() => {
+                            tooltip.removeClass('show');
+                            setTimeout(() => tooltip.hide(), 300);
+                        }, 200);
+                    });
+
+                    tooltip.on('mouseenter', function() {
+                        clearTimeout(tooltipTimeout);
+                    });
+
+                    tooltip.on('mouseleave', function() {
+                        tooltip.removeClass('show');
+                        setTimeout(() => tooltip.hide(), 300);
+                    });
                 },
                 viewRender: function(view, element) {
-                    // Añadir clases adicionales para mejorar la visualización
                     $('.fc-day-number').addClass('fw-bold');
                     $('.fc-day-header').addClass('text-uppercase');
+                },
+                dayClick: function(date, jsEvent, view) {
+                    // Opcional: Añadir funcionalidad al hacer clic en un día
+                    console.log('Clicked on: ' + date.format());
                 }
             });
+
+            // Mejorar la experiencia móvil
+            if (window.matchMedia('(max-width: 768px)').matches) {
+                $('#calendar').fullCalendar('option', 'header', {
+                    left: 'prev,next',
+                    center: 'title',
+                    right: 'today'
+                });
+            }
         });
     </script>
 {% endblock %}

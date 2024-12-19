@@ -3,3 +3,4 @@ gunicorn==20.1.0
 telnyx
 python-dotenv
 openai
+numpy==1.24.3

@@ -5,141 +5,164 @@
 {% block extra_css %}
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.10.0/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
-        /* Modificar el contenedor principal para ocupar todo el ancho */
-        .content-container {
-            max-width: 100% !important;  /* Sobrescribir el max-width del base.html */
-            padding: 0 1rem;
+        /* Estilos generales */
+        body {
+            background-color: #f8f9fa;
         }
 
+        .content-container {
+            max-width: 100% !important;
+            padding: 20px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            border-radius: 10px;
+        }
+
+        /* Estilos del Kanban */
         .kanban-board {
             display: flex;
-            gap: 1rem;
-            padding: 0.5rem;
-            min-height: calc(100vh - 140px); /* Ajustar altura considerando navbar y footer */
+            gap: 1.5rem;
+            padding: 1rem;
+            min-height: calc(100vh - 160px);
             overflow-x: auto;
             width: 100%;
+            background-color: #f8f9fa;
+            border-radius: 8px;
         }
         
         .kanban-column {
-            min-width: 300px;  /* Reducir el min-width para mejor visualización en tablets */
-            background: #f8f9fa;
-            border-radius: 8px;
+            min-width: 320px;
+            background: #ffffff;
+            border-radius: 10px;
             padding: 1rem;
             flex: 1;
-            max-height: calc(100vh - 140px);
+            max-height: calc(100vh - 180px);
             overflow-y: auto;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid #e9ecef;
         }
         
         .column-header {
-            font-weight: bold;
+            font-weight: 600;
             margin-bottom: 1rem;
-            padding: 0.5rem;
-            border-radius: 4px;
+            padding: 0.75rem;
+            border-radius: 6px;
             text-align: center;
+            font-size: 1.1em;
+            color: #495057;
         }
         
-        .pendiente .column-header { background: #cfe2ff; }
-        .en-proceso .column-header { background: #fff3cd; }
-        .en-revision .column-header { background: #e2d9f3; }
-        .completado .column-header { background: #d1e7dd; }
+        .pendiente .column-header { 
+            background: #e3f2fd;
+            color: #0d47a1;
+        }
+        .en-proceso .column-header { 
+            background: #fff3e0;
+            color: #e65100;
+        }
+        .en-revision .column-header { 
+            background: #f3e5f5;
+            color: #4a148c;
+        }
+        .completado .column-header { 
+            background: #e8f5e9;
+            color: #1b5e20;
+        }
         
         .task-card {
             position: relative;
             background: white;
-            padding: 1rem;
-            margin-bottom: 0.5rem;
-            border-radius: 4px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            padding: 1.25rem;
+            margin-bottom: 0.75rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             cursor: move;
             transition: all 0.3s ease;
-            opacity: 1;
+            border: 1px solid #e9ecef;
         }
         
         .task-card:hover {
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
         }
 
         .task-phone {
-            color: #6c757d;
-            font-size: 0.9em;
+            color: #495057;
+            font-size: 1em;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
         }
 
         .task-date {
-            font-size: 0.8em;
-            color: #999;
+            font-size: 0.85em;
+            color: #6c757d;
+            margin-top: 0.5rem;
         }
 
         .task-message {
-            margin-top: 0.5rem;
-            font-size: 0.9em;
+            margin-top: 0.75rem;
+            font-size: 0.95em;
+            color: #212529;
+            line-height: 1.5;
         }
 
         .task-actions {
             position: absolute;
-            top: 0.5rem;
-            right: 0.5rem;
+            top: 0.75rem;
+            right: 0.75rem;
             display: flex;
-            gap: 0.25rem;
+            gap: 0.5rem;
         }
         
         .btn-detail {
-            font-size: 0.8em;
-            padding: 0.2rem 0.5rem;
+            font-size: 0.9em;
+            padding: 0.3rem 0.6rem;
         }
 
         .btn-group {
             display: flex;
-            gap: 0.25rem;
+            gap: 0.35rem;
         }
 
         .btn-group .btn {
-            padding: 0.1rem 0.3rem;
-            font-size: 0.8em;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.9em;
+            border-radius: 4px;
         }
 
-        /* Mejorar la respuesta en dispositivos móviles */
-        @media (max-width: 768px) {
-            .content-container {
-                padding: 0 0.5rem;
-            }
-
-            .kanban-board {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 0.5rem;
-                padding: 0.5rem;
-            }
-            
-            .kanban-column {
-                min-width: 100%;
-                max-height: none;
-                margin-bottom: 0.5rem;
-            }
-
-            .task-card {
-                margin-bottom: 0.5rem;
-            }
-
-            /* Ajustar botones para mejor tacto en móvil */
-            .btn-detail, .btn-group .btn {
-                padding: 0.375rem 0.75rem;
-                font-size: 1rem;
-            }
+        /* Estilos del modal de exportación */
+        .modal-content {
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
 
+        .modal-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .modal-footer {
+            background-color: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            border-radius: 0 0 10px 10px;
+        }
+
+        /* Animaciones mejoradas */
         .task-card.moving {
-            opacity: 0.5;
+            opacity: 0.6;
             transform: scale(0.95);
         }
 
         .task-card.appearing {
-            animation: fadeIn 0.3s ease;
+            animation: fadeInUp 0.4s ease-out;
         }
 
-        @keyframes fadeIn {
+        @keyframes fadeInUp {
             from {
                 opacity: 0;
-                transform: translateY(-10px);
+                transform: translateY(20px);
             }
             to {
                 opacity: 1;
@@ -147,38 +170,46 @@
             }
         }
 
+        .card-blink {
+            animation: cardGlow 2s ease-in-out infinite;
+            border: 2px solid #3498db;
+        }
+
         @keyframes cardGlow {
             0% {
-                box-shadow: 0 0 5px rgba(255, 193, 7, 0.5); /* Amarillo claro */
-                transform: scale(1);
+                box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
             }
             50% {
-                box-shadow: 0 0 10px rgba(255, 165, 0, 0.8); /* Naranja */
-                transform: scale(1.02);
+                box-shadow: 0 0 15px rgba(52, 152, 219, 0.8);
             }
             100% {
-                box-shadow: 0 0 5px rgba(255, 193, 7, 0.5); /* Amarillo claro */
-                transform: scale(1);
+                box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
             }
         }
 
-        .card-blink {
-            animation: cardGlow 1.5s ease-in-out infinite; /* Animación más suave */
-            border: 2px solid #ffc107; /* Borde amarillo */
-            position: relative;
-        }
+        /* Responsive */
+        @media (max-width: 768px) {
+            .content-container {
+                padding: 10px;
+            }
 
-        .card-blink::before {
-            content: '🔔'; /* Ícono de campana */
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            font-size: 1.2em;
-            color: #ff9800; /* Naranja */
-        }
+            .kanban-board {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .kanban-column {
+                min-width: 100%;
+                max-height: none;
+            }
 
-        .card-blink.transitioning { /* Clase para la transición suave al quitar la animación */
-            transition: all 0.3s ease;
+            .task-card {
+                margin-bottom: 0.5rem;
+            }
+
+            .btn-detail, .btn-group .btn {
+                padding: 0.4rem 0.8rem;
+            }
         }
     </style>
 {% endblock %}
@@ -261,6 +292,37 @@
                 </div>
             </div>
             {% endfor %}
+        </div>
+    </div>
+
+    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#exportarModal">
+        <i class="fas fa-file-export"></i> Exportar
+    </button>
+
+    <div class="modal fade" id="exportarModal" tabindex="-1" aria-labelledby="exportarModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exportarModalLabel">Exportar Datos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="exportForm">
+                        <div class="mb-3">
+                            <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
+                            <input type="date" class="form-control" id="fecha_inicio" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="fecha_fin" class="form-label">Fecha Fin</label>
+                            <input type="date" class="form-control" id="fecha_fin" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary" onclick="exportarDatos()">Exportar</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -627,5 +689,55 @@
 
         // También actualizar cuando la página se carga
         document.addEventListener('DOMContentLoaded', updateKanbanBoard);
+
+        function exportarDatos() {
+            const fechaInicio = document.getElementById('fecha_inicio').value;
+            const fechaFin = document.getElementById('fecha_fin').value;
+            
+            if (!fechaInicio || !fechaFin) {
+                alert('Por favor seleccione ambas fechas');
+                return;
+            }
+            
+            if (new Date(fechaFin) < new Date(fechaInicio)) {
+                alert('La fecha final debe ser posterior a la fecha inicial');
+                return;
+            }
+            
+            fetch('/exportar-datos', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    fecha_inicio: fechaInicio,
+                    fecha_fin: fechaFin
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error en la exportación');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `exportacion_${fechaInicio}_${fechaFin}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                // Cerrar el modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('exportarModal'));
+                modal.hide();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al exportar los datos');
+            });
+        }
     </script>
 {% endblock %}

@@ -1,0 +1,573 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="mb-4">Panel de Administración</h2>
+
+    <!-- Estadísticas Generales -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Clientes</h5>
+                    <h2 class="card-text">{{ stats.total_clientes }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Pendientes</h5>
+                    <h2 class="card-text">{{ stats.pendientes }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">En Proceso</h5>
+                    <h2 class="card-text">{{ stats.en_proceso }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Completados</h5>
+                    <h2 class="card-text">{{ stats.completados }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico de Mensajes -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Mensajes por Día (Últimos 7 días)</h5>
+                    <canvas id="mensajesChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Últimos Mensajes No Leídos</h5>
+                    <div class="list-group">
+                        {% for mensaje in mensajes_no_leidos %}
+                        <a href="/detalle/{{ mensaje.cliente_id }}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ mensaje.telefono }}</h6>
+                                <small>{{ mensaje.fecha_hora }}</small>
+                            </div>
+                            <p class="mb-1">{{ mensaje.mensaje }}</p>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuración del Sistema -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Configuración del Sistema</h5>
+                    <ul class="list-group">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Horario de Atención
+                            <span class="badge bg-primary">9am - 7pm</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Base de Datos
+                            <span class="badge bg-success">Conectada</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            API Telnyx
+                            <span class="badge bg-success">Activa</span>
+                        </li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            API Vultr
+                            <span class="badge bg-success">Activa</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Acciones Rápidas</h5>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-info" onclick="location.href='/kanban'">
+                            <i class="fas fa-columns"></i> Ver Kanban
+                        </button>
+                        <button class="btn btn-success" onclick="location.href='/calendario'">
+                            <i class="fas fa-calendar"></i> Ver Calendario
+                        </button>
+                        <button class="btn btn-warning" onclick="abrirEditorPrompt()">
+                            <i class="fas fa-robot"></i> Editar Prompt IA
+                        </button>
+                        <button class="btn btn-info" onclick="abrirGestorDocumentos()">
+                            <i class="fas fa-file-alt"></i> Gestionar Documentos
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col">
+            <button id="limpiarDB" class="btn btn-warning">Limpiar Base de Datos</button>
+            <button id="limpiarMensajes" class="btn btn-danger">Limpiar Mensajes</button>
+        </div>
+    </div>
+
+    <!-- Modal para editar prompt de IA -->
+    <div class="modal fade" id="promptModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Prompt de IA</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="promptText" class="form-label">Prompt de IA:</label>
+                        <textarea class="form-control" id="promptText" rows="15" style="font-family: monospace;"></textarea>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> Este prompt define cómo la IA responderá a los mensajes de los clientes.
+                        Asegúrate de mantener las secciones principales y ajustar según sea necesario.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarPrompt()">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para gestionar documentos -->
+    <div class="modal fade" id="documentModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Gestionar Documentos</h5>
+                    <button type="button" class="btn btn-info ms-2" onclick="mostrarEjemplos()">
+                        <i class="fas fa-question-circle"></i> Ver Ejemplos
+                    </button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Formulario para agregar documentos -->
+                    <form id="documentForm" class="mb-4">
+                        <div class="mb-3">
+                            <label for="docTitulo" class="form-label">Título:</label>
+                            <input type="text" class="form-control" id="docTitulo" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="docTipo" class="form-label">Tipo:</label>
+                            <select class="form-control" id="docTipo" required>
+                                <option value="precio">Lista de Precios</option>
+                                <option value="contacto">Información de Contacto</option>
+                                <option value="promocion">Promoción</option>
+                                <option value="destino">Información de Destino</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="docContenido" class="form-label">Contenido:</label>
+                            <textarea class="form-control" id="docContenido" rows="5" required></textarea>
+                            <small class="text-muted">Usa guiones (-) para listar elementos y mantén un formato consistente.</small>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Agregar Documento</button>
+                    </form>
+
+                    <!-- Lista de documentos existentes -->
+                    <h6 class="mb-3">Documentos Existentes</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="documentosTable">
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Tipo</th>
+                                    <th>Última Actualización</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Los documentos se cargarán dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de ejemplos -->
+    <div class="modal fade" id="ejemplosModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ejemplos de Documentos</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="accordion" id="ejemplosAccordion">
+                        <!-- Ejemplo de Precios -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#ejemploPrecio">
+                                    Ejemplo: Lista de Precios
+                                </button>
+                            </h2>
+                            <div id="ejemploPrecio" class="accordion-collapse collapse show" data-bs-parent="#ejemplosAccordion">
+                                <div class="accordion-body">
+                                    <pre class="bg-light p-3 rounded"><code>Paquetes todo incluido Cancún 2024:
+- Básico (3 noches): $599 USD por persona
+- Estándar (5 noches): $899 USD por persona
+- Premium (7 noches): $1,299 USD por persona
+Incluye: Vuelos, hotel, traslados y seguro de viaje.
+Válido para viajes entre junio y agosto 2024.</code></pre>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="copiarEjemplo('precio')">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ejemplo de Contacto -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ejemploContacto">
+                                    Ejemplo: Información de Contacto
+                                </button>
+                            </h2>
+                            <div id="ejemploContacto" class="accordion-collapse collapse" data-bs-parent="#ejemplosAccordion">
+                                <div class="accordion-body">
+                                    <pre class="bg-light p-3 rounded"><code>Oficina Principal Glendale:
+- Dirección: 130 N Brand Blvd, Glendale, CA 91210 Travel Street, LA 90001
+- Teléfono: (818) 244-2184
+- WhatsApp: +1 818-244-2184
+- Horario: Lunes a Viernes 9am-7pm, Sábados 10am-3pm
+- Email: info@paseotravel.com</code></pre>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="copiarEjemplo('contacto')">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ejemplo de Promoción -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ejemploPromocion">
+                                    Ejemplo: Promoción
+                                </button>
+                            </h2>
+                            <div id="ejemploPromocion" class="accordion-collapse collapse" data-bs-parent="#ejemplosAccordion">
+                                <div class="accordion-body">
+                                    <pre class="bg-light p-3 rounded"><code>¡Oferta especial Riviera Maya!
+- 30% descuento en paquetes de 5+ noches
+- Niños menores de 12 años viajan gratis
+- Incluye: Acceso a parques Xcaret y Xel-Há
+- Reserva antes del 30 de enero 2024
+- Válido para viajes hasta diciembre 2024</code></pre>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="copiarEjemplo('promocion')">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ejemplo de Destino -->
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ejemploDestino">
+                                    Ejemplo: Información de Destino
+                                </button>
+                            </h2>
+                            <div id="ejemploDestino" class="accordion-collapse collapse" data-bs-parent="#ejemplosAccordion">
+                                <div class="accordion-body">
+                                    <pre class="bg-light p-3 rounded"><code>Los Cabos, Baja California Sur:
+- Mejor temporada: Octubre a Mayo
+- Actividades destacadas: Avistamiento de ballenas, golf, pesca deportiva
+- Playas principales: Médano, Santa María, Chileno
+- Temperatura promedio: 24°C-29°C
+- Vuelos directos desde LAX: 2.5 horas
+- Documentos necesarios: Pasaporte vigente</code></pre>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="copiarEjemplo('destino')">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle"></i> Usa estos ejemplos como guía. Mantén el formato con guiones (-) para mejor legibilidad.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Datos para el gráfico
+    const mensajesPorDia = {{ mensajes_por_dia|tojson }};
+    
+    const fechas = mensajesPorDia.map(m => m.fecha);
+    const recibidos = mensajesPorDia.map(m => m.recibidos);
+    const enviados = mensajesPorDia.map(m => m.enviados);
+
+    const ctx = document.getElementById('mensajesChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: fechas,
+            datasets: [{
+                label: 'Mensajes Recibidos',
+                data: recibidos,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1
+            }, {
+                label: 'Mensajes Enviados',
+                data: enviados,
+                borderColor: 'rgb(255, 99, 132)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+});
+
+// Funciones para manejar el prompt de IA
+function abrirEditorPrompt() {
+    fetch('/obtener-prompt-ia')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.getElementById('promptText').value = data.prompt;
+                new bootstrap.Modal(document.getElementById('promptModal')).show();
+            } else {
+                alert('Error cargando el prompt: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error);
+        });
+}
+
+function guardarPrompt() {
+    const prompt = document.getElementById('promptText').value;
+    fetch('/guardar-prompt-ia', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt: prompt })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Prompt guardado correctamente');
+            bootstrap.Modal.getInstance(document.getElementById('promptModal')).hide();
+        } else {
+            alert('Error guardando el prompt: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error);
+    });
+}
+
+// Funciones para gestionar documentos
+function abrirGestorDocumentos() {
+    cargarDocumentos();
+    new bootstrap.Modal(document.getElementById('documentModal')).show();
+}
+
+function cargarDocumentos() {
+    fetch('/listar-documentos')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const tbody = document.querySelector('#documentosTable tbody');
+                tbody.innerHTML = '';
+                
+                data.documentos.forEach(doc => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${doc.titulo}</td>
+                        <td>${doc.tipo}</td>
+                        <td>${new Date(doc.fecha_actualizacion).toLocaleString()}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" onclick="eliminarDocumento(${doc.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function eliminarDocumento(docId) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este documento?')) {
+        return;
+    }
+    
+    fetch(`/eliminar-documento/${docId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Documento eliminado correctamente');
+            cargarDocumentos();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al eliminar documento');
+    });
+}
+
+document.getElementById('documentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const data = {
+        titulo: document.getElementById('docTitulo').value,
+        tipo: document.getElementById('docTipo').value,
+        contenido: document.getElementById('docContenido').value
+    };
+    
+    fetch('/agregar-documento', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Documento agregado correctamente');
+            this.reset();
+            cargarDocumentos();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al agregar documento');
+    });
+});
+
+// Funciones para ejemplos
+function mostrarEjemplos() {
+    new bootstrap.Modal(document.getElementById('ejemplosModal')).show();
+}
+
+const ejemplos = {
+    precio: `Paquetes todo incluido Cancún 2024:
+- Básico (3 noches): $599 USD por persona
+- Estándar (5 noches): $899 USD por persona
+- Premium (7 noches): $1,299 USD por persona
+Incluye: Vuelos, hotel, traslados y seguro de viaje.
+Válido para viajes entre junio y agosto 2024.`,
+    contacto: `Oficina Principal Glendale:
+- Dirección: 130 N Brand Blvd, Glendale, CA 91210 Travel Street, LA 90001
+- Teléfono: (818) 244-2184
+- WhatsApp: +1 818-244-2184
+- Horario: Lunes a Viernes 9am-7pm, Sábados 10am-3pm
+- Email: info@paseotravel.com`,
+    promocion: `¡Oferta especial Riviera Maya!
+- 30% descuento en paquetes de 5+ noches
+- Niños menores de 12 años viajan gratis
+- Incluye: Acceso a parques Xcaret y Xel-Há
+- Reserva antes del 30 de enero 2024
+- Válido para viajes hasta diciembre 2024`,
+    destino: `Los Cabos, Baja California Sur:
+- Mejor temporada: Octubre a Mayo
+- Actividades destacadas: Avistamiento de ballenas, golf, pesca deportiva
+- Playas principales: Médano, Santa María, Chileno
+- Temperatura promedio: 24°C-29°C
+- Vuelos directos desde LAX: 2.5 horas
+- Documentos necesarios: Pasaporte vigente`
+};
+
+function copiarEjemplo(tipo) {
+    const contenido = ejemplos[tipo];
+    document.getElementById('docTipo').value = tipo;
+    document.getElementById('docContenido').value = contenido;
+    document.getElementById('docTitulo').value = tipo === 'precio' ? 'Precios Paquetes Cancún 2024' :
+        tipo === 'contacto' ? 'Horarios y Contactos Oficina Central' :
+        tipo === 'promocion' ? 'Promoción Especial Riviera Maya' :
+        'Guía Los Cabos';
+    bootstrap.Modal.getInstance(document.getElementById('ejemplosModal')).hide();
+}
+
+document.getElementById('limpiarDB').addEventListener('click', async () => {
+    if (confirm('¿Estás seguro de que deseas limpiar toda la base de datos? Esta acción no se puede deshacer.')) {
+        try {
+            const response = await fetch('/limpiar-db', {
+                method: 'POST'
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert('Base de datos limpiada exitosamente');
+                location.reload();
+            } else {
+                alert('Error al limpiar la base de datos: ' + data.error);
+            }
+        } catch (error) {
+            alert('Error al conectar con el servidor');
+        }
+    }
+});
+
+document.getElementById('limpiarMensajes').addEventListener('click', async () => {
+    if (confirm('¿Estás seguro de que deseas limpiar el historial de mensajes? Esta acción no se puede deshacer.')) {
+        try {
+            const response = await fetch('/limpiar-mensajes', {
+                method: 'POST'
+            });
+            const data = await response.json();
+            if (data.success) {
+                alert('Mensajes limpiados exitosamente');
+                location.reload();
+            } else {
+                alert('Error al limpiar los mensajes: ' + data.error);
+            }
+        } catch (error) {
+            alert('Error al conectar con el servidor');
+        }
+    }
+});
+</script>
+{% endblock %}
